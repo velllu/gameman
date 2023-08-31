@@ -59,6 +59,7 @@ impl GameBoy {
             return;
         }
 
+        self.registers.pc = self.registers.pc.wrapping_add(1);
         self.is_cb = false;
     }
 }
@@ -67,7 +68,8 @@ impl GameBoy {
 impl GameBoy {
     /// Returns the byte X times after the `PC` register
     pub(crate) fn next(&self, offset: u16) -> u8 {
-        self.bus.read(self.registers.pc.wrapping_add(offset))
+        self.bus
+            .read_from_rom(self.registers.pc.wrapping_add(offset))
     }
 
     /// Returns the next two bytes from the `PC` register in little endian format

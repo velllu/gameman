@@ -97,3 +97,10 @@ impl Bus {
         }
     }
 }
+
+impl Bus {
+    /// Returns the opcode at specified address
+    pub fn read_from_rom(&self, pc: u16) -> u8 {
+        self.rom[pc as usize]
+    }
+}
