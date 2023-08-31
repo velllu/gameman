@@ -1,3 +1,4 @@
+use crate::common::merge_two_u8s_into_u16;
 use crate::registers::OneByteRegister;
 use crate::registers::TwoByteRegister;
 use crate::GameBoy;
@@ -35,7 +36,7 @@ impl GameBoy {
         }
     }
 
-    pub(crate) fn update_z_flag(&mut self, result: u8) {
+    pub(crate) fn update_zero_flag(&mut self, result: u8) {
         if result == 0 {
             self.flags.zero = true;
         } else {
@@ -53,7 +54,7 @@ impl GameBoy {
         *register = register.wrapping_add(amount);
         let result = *register;
 
-        self.update_z_flag(result);
+        self.update_zero_flag(result);
 
         (1, 1)
     }
@@ -63,7 +64,7 @@ impl GameBoy {
         *register = register.wrapping_sub(amount);
         let result = *register;
 
-        self.update_z_flag(result);
+        self.update_zero_flag(result);
 
         (1, 1)
     }
@@ -71,7 +72,7 @@ impl GameBoy {
 
 // LD functions
 impl GameBoy {
-    pub(crate) fn ld_r_into_r(
+    pub(crate) fn load_r_into_r(
         &mut self,
         register_to_be_loaded: OneByteRegister,
         register: OneByteRegister,
@@ -82,6 +83,14 @@ impl GameBoy {
         *register = register_to_be_loaded;
 
         (1, 1)
+    }
+}
+
+impl GameBoy {
+    pub(crate) fn jump(&mut self, address: u16) {
+        // We substract one, because as soon as the opcode is interpreted, the PC will
+        // automatically go up by one, but we don't want this when we jump
+        self.registers.pc = address.wrapping_sub(1);
     }
 }
 
@@ -104,7 +113,7 @@ impl GameBoy {
         match opcode {
             0x00 => (1, 1), // NOP, does nothing
 
-            // INC R
+            // Increment R
             0x04 => self.increment_8(OneByteRegister::B, 1),
             0x0C => self.increment_8(OneByteRegister::C, 1),
             0x14 => self.increment_8(OneByteRegister::D, 1),
@@ -113,7 +122,7 @@ impl GameBoy {
             0x2C => self.increment_8(OneByteRegister::L, 1),
             0x3C => self.increment_8(OneByteRegister::A, 1),
 
-            // DEC R
+            // Decrement R
             0x05 => self.decrement_8(OneByteRegister::B, 1),
             0x0D => self.decrement_8(OneByteRegister::C, 1),
             0x15 => self.decrement_8(OneByteRegister::D, 1),
@@ -122,56 +131,77 @@ impl GameBoy {
             0x2D => self.decrement_8(OneByteRegister::L, 1),
             0x3D => self.decrement_8(OneByteRegister::A, 1),
 
-            // LD R into R
-            0x40 => self.ld_r_into_r(OneByteRegister::B, OneByteRegister::B),
-            0x41 => self.ld_r_into_r(OneByteRegister::C, OneByteRegister::B),
-            0x42 => self.ld_r_into_r(OneByteRegister::D, OneByteRegister::B),
-            0x43 => self.ld_r_into_r(OneByteRegister::E, OneByteRegister::B),
-            0x44 => self.ld_r_into_r(OneByteRegister::H, OneByteRegister::B),
-            0x45 => self.ld_r_into_r(OneByteRegister::L, OneByteRegister::B),
-            0x47 => self.ld_r_into_r(OneByteRegister::A, OneByteRegister::B),
-            0x48 => self.ld_r_into_r(OneByteRegister::B, OneByteRegister::C),
-            0x49 => self.ld_r_into_r(OneByteRegister::C, OneByteRegister::C),
-            0x4A => self.ld_r_into_r(OneByteRegister::D, OneByteRegister::C),
-            0x4B => self.ld_r_into_r(OneByteRegister::E, OneByteRegister::C),
-            0x4C => self.ld_r_into_r(OneByteRegister::H, OneByteRegister::C),
-            0x4D => self.ld_r_into_r(OneByteRegister::L, OneByteRegister::C),
-            0x4F => self.ld_r_into_r(OneByteRegister::A, OneByteRegister::C),
-            0x50 => self.ld_r_into_r(OneByteRegister::B, OneByteRegister::D),
-            0x51 => self.ld_r_into_r(OneByteRegister::C, OneByteRegister::D),
-            0x52 => self.ld_r_into_r(OneByteRegister::D, OneByteRegister::D),
-            0x53 => self.ld_r_into_r(OneByteRegister::E, OneByteRegister::D),
-            0x54 => self.ld_r_into_r(OneByteRegister::H, OneByteRegister::D),
-            0x55 => self.ld_r_into_r(OneByteRegister::L, OneByteRegister::D),
-            0x57 => self.ld_r_into_r(OneByteRegister::A, OneByteRegister::D),
-            0x58 => self.ld_r_into_r(OneByteRegister::B, OneByteRegister::E),
-            0x59 => self.ld_r_into_r(OneByteRegister::C, OneByteRegister::E),
-            0x5A => self.ld_r_into_r(OneByteRegister::D, OneByteRegister::E),
-            0x5B => self.ld_r_into_r(OneByteRegister::E, OneByteRegister::E),
-            0x5C => self.ld_r_into_r(OneByteRegister::H, OneByteRegister::E),
-            0x5D => self.ld_r_into_r(OneByteRegister::L, OneByteRegister::E),
-            0x5F => self.ld_r_into_r(OneByteRegister::A, OneByteRegister::E),
-            0x60 => self.ld_r_into_r(OneByteRegister::B, OneByteRegister::H),
-            0x61 => self.ld_r_into_r(OneByteRegister::C, OneByteRegister::H),
-            0x62 => self.ld_r_into_r(OneByteRegister::D, OneByteRegister::H),
-            0x63 => self.ld_r_into_r(OneByteRegister::E, OneByteRegister::H),
-            0x64 => self.ld_r_into_r(OneByteRegister::H, OneByteRegister::H),
-            0x65 => self.ld_r_into_r(OneByteRegister::L, OneByteRegister::H),
-            0x67 => self.ld_r_into_r(OneByteRegister::A, OneByteRegister::H),
-            0x68 => self.ld_r_into_r(OneByteRegister::B, OneByteRegister::L),
-            0x69 => self.ld_r_into_r(OneByteRegister::C, OneByteRegister::L),
-            0x6A => self.ld_r_into_r(OneByteRegister::D, OneByteRegister::L),
-            0x6B => self.ld_r_into_r(OneByteRegister::E, OneByteRegister::L),
-            0x6C => self.ld_r_into_r(OneByteRegister::H, OneByteRegister::L),
-            0x6D => self.ld_r_into_r(OneByteRegister::L, OneByteRegister::L),
-            0x6F => self.ld_r_into_r(OneByteRegister::A, OneByteRegister::L),
-            0x78 => self.ld_r_into_r(OneByteRegister::B, OneByteRegister::A),
-            0x79 => self.ld_r_into_r(OneByteRegister::C, OneByteRegister::A),
-            0x7A => self.ld_r_into_r(OneByteRegister::D, OneByteRegister::A),
-            0x7B => self.ld_r_into_r(OneByteRegister::E, OneByteRegister::A),
-            0x7C => self.ld_r_into_r(OneByteRegister::H, OneByteRegister::A),
-            0x7D => self.ld_r_into_r(OneByteRegister::L, OneByteRegister::A),
-            0x7F => self.ld_r_into_r(OneByteRegister::A, OneByteRegister::A),
+            // Load R into R
+            0x40 => self.load_r_into_r(OneByteRegister::B, OneByteRegister::B),
+            0x41 => self.load_r_into_r(OneByteRegister::C, OneByteRegister::B),
+            0x42 => self.load_r_into_r(OneByteRegister::D, OneByteRegister::B),
+            0x43 => self.load_r_into_r(OneByteRegister::E, OneByteRegister::B),
+            0x44 => self.load_r_into_r(OneByteRegister::H, OneByteRegister::B),
+            0x45 => self.load_r_into_r(OneByteRegister::L, OneByteRegister::B),
+            0x47 => self.load_r_into_r(OneByteRegister::A, OneByteRegister::B),
+            0x48 => self.load_r_into_r(OneByteRegister::B, OneByteRegister::C),
+            0x49 => self.load_r_into_r(OneByteRegister::C, OneByteRegister::C),
+            0x4A => self.load_r_into_r(OneByteRegister::D, OneByteRegister::C),
+            0x4B => self.load_r_into_r(OneByteRegister::E, OneByteRegister::C),
+            0x4C => self.load_r_into_r(OneByteRegister::H, OneByteRegister::C),
+            0x4D => self.load_r_into_r(OneByteRegister::L, OneByteRegister::C),
+            0x4F => self.load_r_into_r(OneByteRegister::A, OneByteRegister::C),
+            0x50 => self.load_r_into_r(OneByteRegister::B, OneByteRegister::D),
+            0x51 => self.load_r_into_r(OneByteRegister::C, OneByteRegister::D),
+            0x52 => self.load_r_into_r(OneByteRegister::D, OneByteRegister::D),
+            0x53 => self.load_r_into_r(OneByteRegister::E, OneByteRegister::D),
+            0x54 => self.load_r_into_r(OneByteRegister::H, OneByteRegister::D),
+            0x55 => self.load_r_into_r(OneByteRegister::L, OneByteRegister::D),
+            0x57 => self.load_r_into_r(OneByteRegister::A, OneByteRegister::D),
+            0x58 => self.load_r_into_r(OneByteRegister::B, OneByteRegister::E),
+            0x59 => self.load_r_into_r(OneByteRegister::C, OneByteRegister::E),
+            0x5A => self.load_r_into_r(OneByteRegister::D, OneByteRegister::E),
+            0x5B => self.load_r_into_r(OneByteRegister::E, OneByteRegister::E),
+            0x5C => self.load_r_into_r(OneByteRegister::H, OneByteRegister::E),
+            0x5D => self.load_r_into_r(OneByteRegister::L, OneByteRegister::E),
+            0x5F => self.load_r_into_r(OneByteRegister::A, OneByteRegister::E),
+            0x60 => self.load_r_into_r(OneByteRegister::B, OneByteRegister::H),
+            0x61 => self.load_r_into_r(OneByteRegister::C, OneByteRegister::H),
+            0x62 => self.load_r_into_r(OneByteRegister::D, OneByteRegister::H),
+            0x63 => self.load_r_into_r(OneByteRegister::E, OneByteRegister::H),
+            0x64 => self.load_r_into_r(OneByteRegister::H, OneByteRegister::H),
+            0x65 => self.load_r_into_r(OneByteRegister::L, OneByteRegister::H),
+            0x67 => self.load_r_into_r(OneByteRegister::A, OneByteRegister::H),
+            0x68 => self.load_r_into_r(OneByteRegister::B, OneByteRegister::L),
+            0x69 => self.load_r_into_r(OneByteRegister::C, OneByteRegister::L),
+            0x6A => self.load_r_into_r(OneByteRegister::D, OneByteRegister::L),
+            0x6B => self.load_r_into_r(OneByteRegister::E, OneByteRegister::L),
+            0x6C => self.load_r_into_r(OneByteRegister::H, OneByteRegister::L),
+            0x6D => self.load_r_into_r(OneByteRegister::L, OneByteRegister::L),
+            0x6F => self.load_r_into_r(OneByteRegister::A, OneByteRegister::L),
+            0x78 => self.load_r_into_r(OneByteRegister::B, OneByteRegister::A),
+            0x79 => self.load_r_into_r(OneByteRegister::C, OneByteRegister::A),
+            0x7A => self.load_r_into_r(OneByteRegister::D, OneByteRegister::A),
+            0x7B => self.load_r_into_r(OneByteRegister::E, OneByteRegister::A),
+            0x7C => self.load_r_into_r(OneByteRegister::H, OneByteRegister::A),
+            0x7D => self.load_r_into_r(OneByteRegister::L, OneByteRegister::A),
+            0x7F => self.load_r_into_r(OneByteRegister::A, OneByteRegister::A),
+
+            // Jump
+            // The bytes/cycles data can't be embedded inside the `jump()` function
+            // because it varies between some type of jump instructions
+            0xC3 => { self.jump(self.next_two()); (3, 4) },
+            0xC2 =>
+                if !self.flags.zero { self.jump(self.next_two()); (3, 4) }
+                else { (3, 3) },
+            0xCA =>
+                if self.flags.zero { self.jump(self.next_two()); (3, 4) }
+                else { (3, 3) },
+            0xD2 =>
+                if !self.flags.carry { self.jump(self.next_two()); (3, 4) }
+                else { (3, 3) },
+            0xDA =>
+                if self.flags.carry { self.jump(self.next_two()); (3, 4) }
+                else { (3, 3) },
+            0xE9 => {
+                self.jump(merge_two_u8s_into_u16(self.registers.h, self.registers.l));
+                (1, 1)
+            }
 
             _ => panic!("Opcode {:x} not implemented yet", opcode),
         }
