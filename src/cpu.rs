@@ -86,6 +86,22 @@ impl GameBoy {
     }
 }
 
+// Bitwise operation functions (not all of them as of now)
+impl GameBoy {
+    pub(crate) fn xor_r(&mut self, register: OneByteRegister) -> (Bytes, Cycles) {
+        let register_a = *self.get_r(OneByteRegister::A);
+        let register = self.get_r(register);
+
+        let result = *register ^ register_a;
+        *register = result;
+
+        self.update_zero_flag(result);
+
+        (1, 1)
+    }
+}
+
+// Other functions
 impl GameBoy {
     pub(crate) fn jump(&mut self, address: u16) {
         // We substract one, because as soon as the opcode is interpreted, the PC will
@@ -202,6 +218,15 @@ impl GameBoy {
                 self.jump(merge_two_u8s_into_u16(self.registers.h, self.registers.l));
                 (1, 1)
             }
+
+            // Bitwise operations
+            0xA8 => self.xor_r(OneByteRegister::B),
+            0xA9 => self.xor_r(OneByteRegister::C),
+            0xAA => self.xor_r(OneByteRegister::D),
+            0xAB => self.xor_r(OneByteRegister::E),
+            0xAC => self.xor_r(OneByteRegister::H),
+            0xAD => self.xor_r(OneByteRegister::L),
+            0xAF => self.xor_r(OneByteRegister::A),
 
             _ => panic!("Opcode {:x} not implemented yet", opcode),
         }
