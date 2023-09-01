@@ -1,6 +1,6 @@
 use crate::common::merge_two_u8s_into_u16;
+use crate::common::split_u16_into_two_u8s;
 use crate::registers::OneByteRegister;
-use crate::registers::TwoByteRegister;
 use crate::GameBoy;
 
 // My preferred opcode reference is: https://meganesu.github.io/generate-gb-opcodes/
@@ -21,6 +21,8 @@ type Cycles = u8;
 
 // NAMING CONVENTIONS:
 // r -> one byte register
+// rr -> two byte register
+// ii -> the two bytes of immediate data
 
 // Utility functions
 impl GameBoy {
@@ -34,6 +36,27 @@ impl GameBoy {
             OneByteRegister::H => &mut self.registers.h,
             OneByteRegister::L => &mut self.registers.l,
         }
+    }
+
+    // All this `set_rr()` functions are done because we cannot have a `get_rr` as
+    // registers are stored as a one byte register
+
+    pub(crate) fn set_bc(&mut self, value: u16) {
+        let (register_b, register_c) = split_u16_into_two_u8s(value);
+        self.registers.b = register_b;
+        self.registers.c = register_c;
+    }
+
+    pub(crate) fn set_de(&mut self, value: u16) {
+        let (register_d, register_e) = split_u16_into_two_u8s(value);
+        self.registers.d = register_d;
+        self.registers.e = register_e;
+    }
+
+    pub(crate) fn set_hl(&mut self, value: u16) {
+        let (register_h, register_l) = split_u16_into_two_u8s(value);
+        self.registers.h = register_h;
+        self.registers.l = register_l;
     }
 
     pub(crate) fn update_zero_flag(&mut self, result: u8) {
@@ -119,8 +142,6 @@ impl GameBoy {
 
     #[rustfmt::skip]
     pub(crate) fn interpret_opcode(&mut self, opcode: u8) -> (Bytes, Cycles) {
-        // The functions actually return the `(Bytes, Cycles)`
-
         // I did not choose macros because
         // - Each of them will expand, and make the binary "bigger" (by not a lot, but I
         // still find this less elegant)
@@ -198,9 +219,13 @@ impl GameBoy {
             0x7D => self.load_r_into_r(OneByteRegister::L, OneByteRegister::A),
             0x7F => self.load_r_into_r(OneByteRegister::A, OneByteRegister::A),
 
+            // Load II into RR
+            0x01 => { self.set_bc(self.next_two()); (3, 3) },
+            0x11 => { self.set_de(self.next_two()); (3, 3) },
+            0x21 => { self.set_hl(self.next_two()); (3, 3) },
+            0x31 => { self.registers.sp = self.next_two(); (3, 3) }
+
             // Jump
-            // The bytes/cycles data can't be embedded inside the `jump()` function
-            // because it varies between some type of jump instructions
             0xC3 => { self.jump(self.next_two()); (3, 4) },
             0xC2 =>
                 if !self.flags.zero { self.jump(self.next_two()); (3, 4) }

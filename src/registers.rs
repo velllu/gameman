@@ -49,9 +49,3 @@ pub(crate) enum OneByteRegister {
     H,
     L,
 }
-
-pub(crate) enum TwoByteRegister {
-    BC,
-    DE,
-    HL,
-}
