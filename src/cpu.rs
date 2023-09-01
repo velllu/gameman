@@ -23,6 +23,7 @@ type Cycles = u8;
 // r -> one byte register
 // rr -> two byte register
 // ii -> the two bytes of immediate data
+// ii -> the first byte of immediate data
 
 // Utility functions
 impl GameBoy {
@@ -106,6 +107,15 @@ impl GameBoy {
         *register = register_to_be_loaded;
 
         (1, 1)
+    }
+
+    pub(crate) fn load_i_into_r(&mut self, register: OneByteRegister) -> (Bytes, Cycles) {
+        let i = self.next(1);
+
+        let register = self.get_r(register);
+        *register = i;
+
+        (2, 2)
     }
 }
 
@@ -222,6 +232,15 @@ impl GameBoy {
             0x11 => { self.set_de(self.next_two()); (3, 3) },
             0x21 => { self.set_hl(self.next_two()); (3, 3) },
             0x31 => { self.registers.sp = self.next_two(); (3, 3) },
+
+            // Load I into R
+            0x06 => self.load_i_into_r(OneByteRegister::B),
+            0x0E => self.load_i_into_r(OneByteRegister::C),
+            0x16 => self.load_i_into_r(OneByteRegister::D),
+            0x1E => self.load_i_into_r(OneByteRegister::E),
+            0x26 => self.load_i_into_r(OneByteRegister::H),
+            0x2E => self.load_i_into_r(OneByteRegister::L),
+            0x3E => self.load_i_into_r(OneByteRegister::A),
 
             // Jump
             // When we jump, we set 0 bytes, because if we returned the "correct" amount
