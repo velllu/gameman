@@ -127,9 +127,7 @@ impl GameBoy {
 // Other functions
 impl GameBoy {
     pub(crate) fn jump(&mut self, address: u16) {
-        // We substract one, because as soon as the opcode is interpreted, the PC will
-        // automatically go up by one, but we don't want this when we jump
-        self.registers.pc = address.wrapping_sub(1);
+        self.registers.pc = address;
     }
 }
 
@@ -223,26 +221,28 @@ impl GameBoy {
             0x01 => { self.set_bc(self.next_two()); (3, 3) },
             0x11 => { self.set_de(self.next_two()); (3, 3) },
             0x21 => { self.set_hl(self.next_two()); (3, 3) },
-            0x31 => { self.registers.sp = self.next_two(); (3, 3) }
+            0x31 => { self.registers.sp = self.next_two(); (3, 3) },
 
             // Jump
-            0xC3 => { self.jump(self.next_two()); (3, 4) },
+            // When we jump, we set 0 bytes, because if we returned the "correct" amount
+            // of bytes, the program will add them to PC after the jump
+            0xC3 => { self.jump(self.next_two()); (0, 4) },
             0xC2 =>
-                if !self.flags.zero { self.jump(self.next_two()); (3, 4) }
+                if !self.flags.zero { self.jump(self.next_two()); (0, 4) }
                 else { (3, 3) },
             0xCA =>
-                if self.flags.zero { self.jump(self.next_two()); (3, 4) }
+                if self.flags.zero { self.jump(self.next_two()); (0, 4) }
                 else { (3, 3) },
             0xD2 =>
-                if !self.flags.carry { self.jump(self.next_two()); (3, 4) }
+                if !self.flags.carry { self.jump(self.next_two()); (0, 4) }
                 else { (3, 3) },
             0xDA =>
-                if self.flags.carry { self.jump(self.next_two()); (3, 4) }
+                if self.flags.carry { self.jump(self.next_two()); (0, 4) }
                 else { (3, 3) },
             0xE9 => {
                 self.jump(merge_two_u8s_into_u16(self.registers.h, self.registers.l));
-                (1, 1)
-            }
+                (0, 1)
+            },
 
             // Bitwise operations
             0xA8 => self.xor_r(OneByteRegister::B),

@@ -48,18 +48,18 @@ impl GameBoy {
         let opcode = self.next(0);
         self.current_opcode = Some(opcode);
 
-        if self.is_cb {
-            self.interpret_cb_opcode(opcode);
+        let opcode_data = if self.is_cb {
+            self.interpret_cb_opcode(opcode)
         } else {
-            self.interpret_opcode(opcode);
-        }
+            self.interpret_opcode(opcode)
+        };
 
         if opcode == 0xCB {
             self.is_cb = true;
             return;
         }
 
-        self.registers.pc = self.registers.pc.wrapping_add(1);
+        self.registers.pc = self.registers.pc.wrapping_add(opcode_data.0 as u16);
         self.is_cb = false;
     }
 }
