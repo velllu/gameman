@@ -1,3 +1,4 @@
+use crate::common::split_u16_into_two_u8s;
 use std::fmt::{write, Debug};
 
 pub struct Registers {
@@ -48,4 +49,39 @@ pub(crate) enum OneByteRegister {
     E,
     H,
     L,
+}
+
+impl Registers {
+    pub(crate) fn get_r(&mut self, register: OneByteRegister) -> &mut u8 {
+        match register {
+            OneByteRegister::A => &mut self.a,
+            OneByteRegister::B => &mut self.b,
+            OneByteRegister::C => &mut self.c,
+            OneByteRegister::D => &mut self.d,
+            OneByteRegister::E => &mut self.e,
+            OneByteRegister::H => &mut self.h,
+            OneByteRegister::L => &mut self.l,
+        }
+    }
+
+    // All this `set_rr()` functions are done because we cannot have a `get_rr` as
+    // registers are stored as a one byte register
+
+    pub(crate) fn set_bc(&mut self, value: u16) {
+        let (register_b, register_c) = split_u16_into_two_u8s(value);
+        self.b = register_b;
+        self.c = register_c;
+    }
+
+    pub(crate) fn set_de(&mut self, value: u16) {
+        let (register_d, register_e) = split_u16_into_two_u8s(value);
+        self.d = register_d;
+        self.e = register_e;
+    }
+
+    pub(crate) fn set_hl(&mut self, value: u16) {
+        let (register_h, register_l) = split_u16_into_two_u8s(value);
+        self.h = register_h;
+        self.l = register_l;
+    }
 }
