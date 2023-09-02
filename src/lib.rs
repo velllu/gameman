@@ -3,6 +3,7 @@
 
 use bus::Bus;
 use common::merge_two_u8s_into_u16;
+use consts::bus::ROM_SIZE;
 use errors::EmuError;
 use flags::Flags;
 use registers::Registers;
@@ -17,6 +18,9 @@ mod flags;
 mod macros;
 mod registers;
 mod screen;
+
+#[cfg(test)]
+mod tests;
 
 pub struct GameBoy {
     pub bus: Bus,
@@ -41,6 +45,17 @@ impl GameBoy {
             is_cb: false,
             current_opcode: None,
         })
+    }
+
+    pub fn new_from_rom_array(rom: [u8; ROM_SIZE]) -> Self {
+        Self {
+            bus: Bus::new_from_rom_array(rom),
+            screen: Screen::new(),
+            registers: Registers::new(),
+            flags: Flags::new(),
+            is_cb: false,
+            current_opcode: None,
+        }
     }
 
     /// Parse and run the next opcode
