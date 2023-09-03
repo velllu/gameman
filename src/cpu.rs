@@ -1,4 +1,4 @@
-use crate::common::merge_two_u8s_into_u16;
+use crate::common::{merge_two_u8s_into_u16, Operator};
 use crate::registers::OneByteRegister;
 use crate::GameBoy;
 
@@ -23,14 +23,6 @@ type Cycles = u8;
 // rr -> two byte register
 // ii -> the two bytes of immediate data
 // ii -> the first byte of immediate data
-
-pub(crate) enum Operator {
-    Inc,
-    Sub,
-}
-
-// Utility functions
-impl GameBoy {}
 
 // INC/DEC function
 impl GameBoy {
@@ -193,6 +185,21 @@ impl GameBoy {
             0x26 => { self.load_i_into_r(OneByteRegister::H); (2, 2) },
             0x2E => { self.load_i_into_r(OneByteRegister::L); (2, 2) },
             0x3E => { self.load_i_into_r(OneByteRegister::A); (2, 2) },
+
+            // Load R into ram
+            0x02 => { self.bus.write_byte(self.registers.get_bc(), self.registers.a); (1, 2) },
+            0x08 => todo!(), // this is a strange one,
+            0x12 => { self.bus.write_byte(self.registers.get_de(), self.registers.a); (1, 2) },
+            0x22 => { self.bus.write_byte(self.registers.get_hl(), self.registers.a.wrapping_add(1)); (1, 2) },
+            0x32 => { self.bus.write_byte(self.registers.get_hl(), self.registers.a.wrapping_sub(1)); (1, 2) },
+            0x36 => { self.bus.write_byte(self.registers.get_hl(), self.next(1)); (2, 3) },
+            0x70 => { self.bus.write_byte(self.registers.get_hl(), self.registers.b); (1, 2) },
+            0x71 => { self.bus.write_byte(self.registers.get_hl(), self.registers.c); (1, 2) },
+            0x72 => { self.bus.write_byte(self.registers.get_hl(), self.registers.d); (1, 2) },
+            0x73 => { self.bus.write_byte(self.registers.get_hl(), self.registers.e); (1, 2) },
+            0x74 => { self.bus.write_byte(self.registers.get_hl(), self.registers.h); (1, 2) },
+            0x75 => { self.bus.write_byte(self.registers.get_hl(), self.registers.l); (1, 2) },
+            0x77 => { self.bus.write_byte(self.registers.get_hl(), self.registers.a); (1, 2) },
 
             // Jump
             // When we jump, we set 0 bytes, because if we returned the "correct" amount

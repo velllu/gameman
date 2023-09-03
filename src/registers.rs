@@ -1,4 +1,4 @@
-use crate::common::split_u16_into_two_u8s;
+use crate::common::{merge_two_u8s_into_u16, split_u16_into_two_u8s};
 use std::fmt::Debug;
 
 pub struct Registers {
@@ -73,15 +73,27 @@ impl Registers {
         self.c = register_c;
     }
 
+    pub(crate) fn get_bc(&self) -> u16 {
+        merge_two_u8s_into_u16(self.b, self.c)
+    }
+
     pub(crate) fn set_de(&mut self, value: u16) {
         let (register_d, register_e) = split_u16_into_two_u8s(value);
         self.d = register_d;
         self.e = register_e;
     }
 
+    pub(crate) fn get_de(&self) -> u16 {
+        merge_two_u8s_into_u16(self.d, self.e)
+    }
+
     pub(crate) fn set_hl(&mut self, value: u16) {
         let (register_h, register_l) = split_u16_into_two_u8s(value);
         self.h = register_h;
         self.l = register_l;
+    }
+
+    pub(crate) fn get_hl(&self) -> u16 {
+        merge_two_u8s_into_u16(self.h, self.l)
     }
 }
