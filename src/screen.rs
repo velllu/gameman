@@ -1,3 +1,6 @@
+// i have yet to implement the actual screen
+#![allow(unused)]
+
 use crate::consts::display::{DISPLAY_SIZE_X, DISPLAY_SIZE_Y};
 
 pub struct Screen {

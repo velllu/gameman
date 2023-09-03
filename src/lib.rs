@@ -1,5 +1,4 @@
 #![forbid(unsafe_code)]
-#![allow(unused)]
 
 use bus::Bus;
 use common::merge_two_u8s_into_u16;

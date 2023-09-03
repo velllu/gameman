@@ -1,5 +1,5 @@
 use crate::common::split_u16_into_two_u8s;
-use std::fmt::{write, Debug};
+use std::fmt::Debug;
 
 pub struct Registers {
     pub a: u8,

@@ -9,6 +9,7 @@ use crate::{consts::bus::*, errors::EmuError};
 /// - Work ram, size: 100  
 /// If we need to set address 150 for example, it will go to the 50th bit of the work ram
 /// ```
+#[allow(unused)]
 pub struct Bus {
     eom: [u8; EOM_SIZE],
     high_ram: [u8; HIGH_RAM_SIZE],
@@ -90,7 +91,7 @@ impl Bus {
             0xFF80..=0xFFFE => self.high_ram[(address - 0xFF80) as usize] = value,
             0xFFFF..=0xFFFF => self.ie = value,
 
-            0x0000..=0x7FFF | 0xFEA0..=0xFEFF | _ => {
+            0x0000..=0x7FFF | 0xFEA0..=0xFEFF => {
                 println!("Invalid writing");
             }
         }
@@ -107,7 +108,7 @@ impl Bus {
             0xFF80..=0xFFFE => self.high_ram[(address - 0xFF80) as usize],
             0xFFFF..=0xFFFF => self.ie,
 
-            0x0000..=0x7FFF | 0xFEA0..=0xFEFF | _ => 0xFF,
+            0x0000..=0x7FFF | 0xFEA0..=0xFEFF => 0xFF,
         }
     }
 }

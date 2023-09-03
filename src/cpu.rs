@@ -1,5 +1,4 @@
 use crate::common::merge_two_u8s_into_u16;
-use crate::common::split_u16_into_two_u8s;
 use crate::registers::OneByteRegister;
 use crate::GameBoy;
 
