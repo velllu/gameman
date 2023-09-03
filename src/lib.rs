@@ -14,7 +14,6 @@ mod consts;
 mod cpu;
 mod errors;
 mod flags;
-mod macros;
 mod registers;
 mod screen;
 
