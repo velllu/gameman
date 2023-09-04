@@ -66,6 +66,18 @@ mod cpu {
         assert_eq!(0, gb.registers.h);
     }
 
+    #[test]
+    fn ld_r_into_ram() {
+        let mut gb = create_gb_from_opcode(0x22);
+
+        gb.registers.h = 0xC0;
+        gb.registers.l = 0x00;
+
+        gb.step();
+
+        assert_eq!(0x02, gb.bus.read(gb.registers.get_hl()));
+    }
+
     // Jumps vary so much, so it's better to have more tests
     mod jumps {
         #[test]

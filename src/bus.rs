@@ -89,9 +89,9 @@ impl Bus {
             0xFE00..=0xFE9F => self.eom[(address - 0xFE00) as usize] = value,
             0xFF00..=0xFF7F => todo!(), // io
             0xFF80..=0xFFFE => self.high_ram[(address - 0xFF80) as usize] = value,
-            0xFFFF..=0xFFFF => self.ie = value,
+            0xFFFF => self.ie = value,
 
-            0x0000..=0x7FFF | 0xFEA0..=0xFEFF => {
+            _ => {
                 println!("Invalid writing");
             }
         }
@@ -100,15 +100,15 @@ impl Bus {
     pub fn read(&self, address: u16) -> u8 {
         match address {
             0x8000..=0x9FFF => self.video_ram[(address - 0x8000) as usize],
-            0xA000..=0xBFFF => todo!(),
+            0xA000..=0xBFFF => todo!(), // external ram
             0xC000..=0xDFFF => self.work_ram[(address - 0xC000) as usize],
-            0xE000..=0xFDFF => todo!(),
+            0xE000..=0xFDFF => todo!(), // mirror ram
             0xFE00..=0xFE9F => self.eom[(address - 0xFE00) as usize],
-            0xFF00..=0xFF7F => todo!(),
+            0xFF00..=0xFF7F => todo!(), // io
             0xFF80..=0xFFFE => self.high_ram[(address - 0xFF80) as usize],
-            0xFFFF..=0xFFFF => self.ie,
+            0xFFFF => self.ie,
 
-            0x0000..=0x7FFF | 0xFEA0..=0xFEFF => 0xFF,
+            _ => 0xFF,
         }
     }
 }
