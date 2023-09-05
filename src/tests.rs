@@ -75,7 +75,8 @@ mod cpu {
 
         gb.step();
 
-        assert_eq!(0x02, gb.bus.read(gb.registers.get_hl()));
+        assert_eq!(0x01, gb.bus.read(gb.registers.get_hl().wrapping_sub(1)));
+        assert_eq!(0x01, gb.registers.l);
     }
 
     // Jumps vary so much, so it's better to have more tests

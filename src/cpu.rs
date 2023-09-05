@@ -201,8 +201,6 @@ impl GameBoy {
             0x02 => { self.bus.write_byte(self.registers.get_bc(), self.registers.a); (1, 2) },
             0x08 => todo!(), // this is a strange one,
             0x12 => { self.bus.write_byte(self.registers.get_de(), self.registers.a); (1, 2) },
-            0x22 => { self.bus.write_byte(self.registers.get_hl(), self.registers.a.wrapping_add(1)); (1, 2) },
-            0x32 => { self.bus.write_byte(self.registers.get_hl(), self.registers.a.wrapping_sub(1)); (1, 2) },
             0x36 => { self.bus.write_byte(self.registers.get_hl(), self.next(1)); (2, 3) },
             0x70 => { self.bus.write_byte(self.registers.get_hl(), self.registers.b); (1, 2) },
             0x71 => { self.bus.write_byte(self.registers.get_hl(), self.registers.c); (1, 2) },
@@ -211,6 +209,18 @@ impl GameBoy {
             0x74 => { self.bus.write_byte(self.registers.get_hl(), self.registers.h); (1, 2) },
             0x75 => { self.bus.write_byte(self.registers.get_hl(), self.registers.l); (1, 2) },
             0x77 => { self.bus.write_byte(self.registers.get_hl(), self.registers.a); (1, 2) },
+
+            0x22 => {
+                self.bus.write_byte(self.registers.get_hl(), self.registers.a);
+                self.registers.set_hl(self.registers.get_hl().wrapping_add(1));
+                (1, 2)
+            },
+
+            0x32 => {
+                self.bus.write_byte(self.registers.get_hl(), self.registers.a);
+                self.registers.set_hl(self.registers.get_hl().wrapping_sub(1));
+                (1, 2)
+            },
 
             // Jump
             // When we jump, we set 0 bytes, because if we returned the "correct" amount
