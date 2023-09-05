@@ -86,7 +86,6 @@ impl GameBoy {
 
     fn jump_relative(&mut self) {
         let jump_amount = self.next(1) as i8;
-        println!("{}", jump_amount);
 
         if jump_amount >= 0 {
             self.registers.pc = self.registers.pc.wrapping_add(jump_amount as u16);
