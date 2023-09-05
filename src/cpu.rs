@@ -83,6 +83,17 @@ impl GameBoy {
     pub(crate) fn jump(&mut self, address: u16) {
         self.registers.pc = address;
     }
+
+    fn jump_relative(&mut self) {
+        let jump_amount = self.next(1) as i8;
+        println!("{}", jump_amount);
+
+        if jump_amount >= 0 {
+            self.registers.pc = self.registers.pc.wrapping_add(jump_amount as u16);
+        } else {
+            self.registers.pc = self.registers.pc.wrapping_sub(jump_amount.abs() as u16);
+        }
+    }
 }
 
 impl GameBoy {
@@ -227,6 +238,25 @@ impl GameBoy {
                 (0, 1)
             },
 
+            // Relative Jumps
+            0x18 => { self.jump_relative(); (2, 3) },
+
+            0x20 =>
+                if !self.flags.zero { self.jump_relative(); (2, 3) }
+                else { (2, 2) }
+
+            0x28 =>
+                if self.flags.zero { self.jump_relative(); (2, 3) }
+                else { (2, 2) }
+
+            0x30 =>
+                if !self.flags.carry { self.jump_relative(); (2, 3) }
+                else { (2, 2) }
+
+            0x38 =>
+                if self.flags.carry { self.jump_relative(); (2, 3) }
+                else { (2, 2) }
+            
             // Bitwise operations
             0xA8 => { self.xor_r(OneByteRegister::B); (1, 1) },
             0xA9 => { self.xor_r(OneByteRegister::C); (1, 1) },

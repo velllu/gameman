@@ -97,4 +97,12 @@ mod cpu {
             assert_eq!(0x0103, gb.registers.pc);
         }
     }
+
+    #[test]
+    fn jump_relative() {
+        let mut gb = super::create_gb_from_opcode_with_immediate_data(0x20, 0xFF, 0x00);
+        gb.step();
+
+        assert_eq!(0x0101, gb.registers.pc);
+    }
 }
