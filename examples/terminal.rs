@@ -13,14 +13,15 @@ fn main() {
     let mut gameboy = GameBoy::new(&rom_path).unwrap();
 
     loop {
+        print!("{:?}", gameboy.registers);
+
         gameboy.step();
 
         if gameboy.is_cb {
             println!("CB opcode:")
         }
 
-        print!("{:?}", gameboy.registers);
-
         println!("OPCODE: {:x}", gameboy.current_opcode.unwrap());
+        println!("");
     }
 }
