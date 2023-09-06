@@ -1,4 +1,5 @@
 use crate::common::{merge_two_u8s_into_u16, Operator};
+use crate::consts::bus::IO_START;
 use crate::registers::OneByteRegister;
 use crate::GameBoy;
 
@@ -62,6 +63,11 @@ impl GameBoy {
 
         let register = self.registers.get_r(register);
         *register = i;
+    }
+
+    pub(crate) fn load_i_into_io(&mut self, register: OneByteRegister) {
+        let register = *self.registers.get_r(register);
+        self.bus.write_byte((IO_START + self.next(1) as usize) as u16, register);
     }
 }
 
@@ -220,6 +226,9 @@ impl GameBoy {
                 self.registers.set_hl(self.registers.get_hl().wrapping_sub(1));
                 (1, 2)
             },
+
+            // Load R into IO (yes, only one of this)
+            0xE0 => { self.load_i_into_io(OneByteRegister::A); (2, 3) },
 
             // Jump
             // When we jump, we set 0 bytes, because if we returned the "correct" amount
