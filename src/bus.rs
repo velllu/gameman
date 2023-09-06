@@ -87,7 +87,7 @@ impl Bus {
             0xC000..=0xDFFF => self.work_ram[(address - 0xC000) as usize] = value,
             0xE000..=0xFDFF => todo!(), // mirror ram
             0xFE00..=0xFE9F => self.eom[(address - 0xFE00) as usize] = value,
-            0xFF00..=0xFF7F => todo!(), // io
+            0xFF00..=0xFF7F => self.io[(address - IO_START as u16) as usize] = value,
             0xFF80..=0xFFFE => self.high_ram[(address - 0xFF80) as usize] = value,
             0xFFFF => self.ie = value,
 
@@ -104,7 +104,7 @@ impl Bus {
             0xC000..=0xDFFF => self.work_ram[(address - 0xC000) as usize],
             0xE000..=0xFDFF => todo!(), // mirror ram
             0xFE00..=0xFE9F => self.eom[(address - 0xFE00) as usize],
-            0xFF00..=0xFF7F => todo!(), // io
+            0xFF00..=0xFF7F => self.io[(address - IO_START as u16) as usize],
             0xFF80..=0xFFFE => self.high_ram[(address - 0xFF80) as usize],
             0xFFFF => self.ie,
 
