@@ -23,7 +23,7 @@ type Cycles = u8;
 // r -> one byte register
 // rr -> two byte register
 // ii -> the two bytes of immediate data
-// ii -> the first byte of immediate data
+// i -> the first byte of immediate data
 
 // INC/DEC function
 impl GameBoy {
@@ -68,6 +68,13 @@ impl GameBoy {
     pub(crate) fn load_r_into_io(&mut self, register: OneByteRegister) {
         let register = *self.registers.get_r(register);
         self.bus.write_byte((IO_START + self.next(1) as usize) as u16, register);
+    }
+
+    pub(crate) fn load_io_into_r(&mut self, register: OneByteRegister) {
+        let i = self.next(1);
+
+        let register = self.registers.get_r(register);
+        *register = self.bus.read((IO_START + i as usize) as u16)
     }
 }
 
@@ -229,6 +236,9 @@ impl GameBoy {
 
             // Load R into IO (yes, only one of this)
             0xE0 => { self.load_r_into_io(OneByteRegister::A); (2, 3) },
+
+            // Load IO into R (still only one of this)
+            0xF0 => { self.load_io_into_r(OneByteRegister::A); (2, 3) },
 
             // Jump
             // When we jump, we set 0 bytes, because if we returned the "correct" amount
