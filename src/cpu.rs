@@ -275,6 +275,9 @@ impl GameBoy {
             0xAD => { self.xor_r(OneByteRegister::L); (1, 1) },
             0xAF => { self.xor_r(OneByteRegister::A); (1, 1) },
 
+            // Interrupt stuff
+            0xF3 => { self.flags.ime = true; (1, 1) },
+
             _ => panic!("Opcode {:x} not implemented yet", opcode),
         }
     }

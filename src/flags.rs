@@ -4,6 +4,10 @@ pub struct Flags {
     /// sets the zero flag
     pub zero: bool,
 
+    /// IME, standing for "Interrupt Master Enable" is basically a switch on whether
+    /// interrupts should be handled or not
+    pub ime: bool,
+
     // TODO: Document this other flags
     pub substraction: bool,
     pub half_carry: bool,
@@ -14,6 +18,7 @@ impl Flags {
     pub(crate) fn new() -> Self {
         Self {
             zero: false,
+            ime: false,
             substraction: false,
             half_carry: false,
             carry: false,
