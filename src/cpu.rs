@@ -65,7 +65,7 @@ impl GameBoy {
         *register = i;
     }
 
-    pub(crate) fn load_i_into_io(&mut self, register: OneByteRegister) {
+    pub(crate) fn load_r_into_io(&mut self, register: OneByteRegister) {
         let register = *self.registers.get_r(register);
         self.bus.write_byte((IO_START + self.next(1) as usize) as u16, register);
     }
@@ -228,7 +228,7 @@ impl GameBoy {
             },
 
             // Load R into IO (yes, only one of this)
-            0xE0 => { self.load_i_into_io(OneByteRegister::A); (2, 3) },
+            0xE0 => { self.load_r_into_io(OneByteRegister::A); (2, 3) },
 
             // Jump
             // When we jump, we set 0 bytes, because if we returned the "correct" amount
