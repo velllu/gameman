@@ -21,6 +21,7 @@ type Cycles = u8;
 
 // NAMING CONVENTIONS:
 // r -> one byte register
+// ra -> register a in particular
 // rr -> two byte register
 // ii -> the two bytes of immediate data
 // i -> the first byte of immediate data
@@ -78,20 +79,24 @@ impl GameBoy {
     }
 }
 
-// Bitwise operation functions (not all of them as of now)
+// CP functions
 impl GameBoy {
-    pub(crate) fn xor_r(&mut self, register: OneByteRegister) {
-        let register_a = *self.registers.get_r(OneByteRegister::A);
-        let register = self.registers.get_r(register);
+    pub(crate) fn compare_ra_to_i(&mut self) {
+        self.flags.update_zero_flag(self.registers.a.wrapping_sub(self.next(1)));
+    }
 
-        let result = *register ^ register_a;
-        *register = result;
+    pub(crate) fn compare_ra_to_r(&mut self, register: OneByteRegister) {
+        let register = *self.registers.get_r(register);
+        self.flags.update_zero_flag(self.registers.a.wrapping_sub(register));
+    }
 
-        self.flags.update_zero_flag(result);
+    pub(crate) fn compare_ra_to_ram(&mut self, address: u16) {
+        let ram = self.bus.read(address);
+        self.flags.update_zero_flag(self.registers.a.wrapping_sub(ram));
     }
 }
 
-// Other functions
+// Jump Functions
 impl GameBoy {
     pub(crate) fn jump(&mut self, address: u16) {
         self.registers.pc = address;
@@ -105,6 +110,19 @@ impl GameBoy {
         } else {
             self.registers.pc = self.registers.pc.wrapping_sub(jump_amount.abs() as u16);
         }
+    }
+}
+
+// Bitwise operation functions (not all of them as of now)
+impl GameBoy {
+    pub(crate) fn xor_r(&mut self, register: OneByteRegister) {
+        let register_a = *self.registers.get_r(OneByteRegister::A);
+        let register = self.registers.get_r(register);
+
+        let result = *register ^ register_a;
+        *register = result;
+
+        self.flags.update_zero_flag(result);
     }
 }
 
@@ -239,6 +257,17 @@ impl GameBoy {
 
             // Load IO into R (still only one of this)
             0xF0 => { self.load_io_into_r(OneByteRegister::A); (2, 3) },
+
+            // Compare
+            0xB8 => { self.compare_ra_to_r(OneByteRegister::B); (1, 1) },
+            0xB9 => { self.compare_ra_to_r(OneByteRegister::C); (1, 1) },
+            0xBA => { self.compare_ra_to_r(OneByteRegister::D); (1, 1) },
+            0xBB => { self.compare_ra_to_r(OneByteRegister::E); (1, 1) },
+            0xBC => { self.compare_ra_to_r(OneByteRegister::H); (1, 1) },
+            0xBD => { self.compare_ra_to_r(OneByteRegister::L); (1, 1) },
+            0xBE => { self.compare_ra_to_ram(self.registers.get_hl()); (1, 1) },
+            0xBF => { self.compare_ra_to_r(OneByteRegister::A); (1, 1) },
+            0xFE => { self.compare_ra_to_i(); (2, 2) },
 
             // Jump
             // When we jump, we set 0 bytes, because if we returned the "correct" amount
