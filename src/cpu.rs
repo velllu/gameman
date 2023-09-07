@@ -28,7 +28,7 @@ type Cycles = u8;
 
 // INC/DEC function
 impl GameBoy {
-    pub(crate) fn increment_r(
+    fn increment_r(
         &mut self,
         register: OneByteRegister,
         operator: Operator,
@@ -48,7 +48,7 @@ impl GameBoy {
 
 // LD functions
 impl GameBoy {
-    pub(crate) fn load_r_into_r(
+    fn load_r_into_r(
         &mut self,
         register_to_be_loaded: OneByteRegister,
         register: OneByteRegister,
@@ -59,19 +59,19 @@ impl GameBoy {
         *register = register_to_be_loaded;
     }
 
-    pub(crate) fn load_i_into_r(&mut self, register: OneByteRegister) {
+    fn load_i_into_r(&mut self, register: OneByteRegister) {
         let i = self.next(1);
 
         let register = self.registers.get_r(register);
         *register = i;
     }
 
-    pub(crate) fn load_r_into_io(&mut self, register: OneByteRegister) {
+    fn load_r_into_io(&mut self, register: OneByteRegister) {
         let register = *self.registers.get_r(register);
         self.bus.write_byte((IO_START + self.next(1) as usize) as u16, register);
     }
 
-    pub(crate) fn load_io_into_r(&mut self, register: OneByteRegister) {
+    fn load_io_into_r(&mut self, register: OneByteRegister) {
         let i = self.next(1);
 
         let register = self.registers.get_r(register);
@@ -81,16 +81,16 @@ impl GameBoy {
 
 // CP functions
 impl GameBoy {
-    pub(crate) fn compare_ra_to_i(&mut self) {
+    fn compare_ra_to_i(&mut self) {
         self.flags.update_zero_flag(self.registers.a.wrapping_sub(self.next(1)));
     }
 
-    pub(crate) fn compare_ra_to_r(&mut self, register: OneByteRegister) {
+    fn compare_ra_to_r(&mut self, register: OneByteRegister) {
         let register = *self.registers.get_r(register);
         self.flags.update_zero_flag(self.registers.a.wrapping_sub(register));
     }
 
-    pub(crate) fn compare_ra_to_ram(&mut self, address: u16) {
+    fn compare_ra_to_ram(&mut self, address: u16) {
         let ram = self.bus.read(address);
         self.flags.update_zero_flag(self.registers.a.wrapping_sub(ram));
     }
@@ -98,7 +98,7 @@ impl GameBoy {
 
 // Jump Functions
 impl GameBoy {
-    pub(crate) fn jump(&mut self, address: u16) {
+    fn jump(&mut self, address: u16) {
         self.registers.pc = address;
     }
 
@@ -115,7 +115,7 @@ impl GameBoy {
 
 // Bitwise operation functions (not all of them as of now)
 impl GameBoy {
-    pub(crate) fn xor_r(&mut self, register: OneByteRegister) {
+    fn xor_r(&mut self, register: OneByteRegister) {
         let register_a = *self.registers.get_r(OneByteRegister::A);
         let register = self.registers.get_r(register);
 
