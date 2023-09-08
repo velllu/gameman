@@ -14,6 +14,7 @@ mod consts;
 mod cpu;
 mod errors;
 mod flags;
+mod interrupts;
 mod registers;
 mod screen;
 
@@ -61,6 +62,7 @@ impl GameBoy {
         let opcode = self.next(0);
         self.current_opcode = Some(opcode);
 
+        // CPU - Opcodes
         let opcode_data = if self.is_cb {
             self.interpret_cb_opcode(opcode)
         } else {
@@ -74,6 +76,9 @@ impl GameBoy {
 
         self.registers.pc = self.registers.pc.wrapping_add(opcode_data.0 as u16);
         self.is_cb = false;
+
+        // CPU - Interrupts
+        self.execute_interrupts()
     }
 }
 
