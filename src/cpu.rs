@@ -1,4 +1,4 @@
-use crate::common::{merge_two_u8s_into_u16, Operator};
+use crate::common::{merge_two_u8s_into_u16, Operator, split_u16_into_two_u8s};
 use crate::consts::bus::IO_START;
 use crate::registers::OneByteRegister;
 use crate::GameBoy;
@@ -229,7 +229,6 @@ impl GameBoy {
 
             // Load R into ram
             0x02 => { self.bus.write_byte(self.registers.get_bc(), self.registers.a); (1, 2) },
-            0x08 => todo!(), // this is a strange one,
             0x12 => { self.bus.write_byte(self.registers.get_de(), self.registers.a); (1, 2) },
             0x36 => { self.bus.write_byte(self.registers.get_hl(), self.next(1)); (2, 3) },
             0x70 => { self.bus.write_byte(self.registers.get_hl(), self.registers.b); (1, 2) },
@@ -257,6 +256,18 @@ impl GameBoy {
 
             // Load IO into R (still only one of this)
             0xF0 => { self.load_io_into_r(OneByteRegister::A); (2, 3) },
+
+            // Load R into RAM, with address specified by II
+            0xEA => { self.bus.write_byte(self.next_two(), self.registers.a); (3, 4) },
+            0x08 => {
+                // This is a bit different from `0xEA`, because we need to load SP in,
+                // which is 2 bytes long
+                let (s, p) = split_u16_into_two_u8s(self.registers.sp);
+                self.bus.write_byte(self.next_two(), s);
+                self.bus.write_byte(self.next_two().wrapping_add(1), p);
+
+                (3, 5)
+            }
 
             // Compare
             0xB8 => { self.compare_ra_to_r(OneByteRegister::B); (1, 1) },
