@@ -1,4 +1,4 @@
-use crate::common::{merge_two_u8s_into_u16, Operator, split_u16_into_two_u8s};
+use crate::common::{merge_two_u8s_into_u16, split_u16_into_two_u8s, Operator};
 use crate::consts::bus::IO_START;
 use crate::registers::OneByteRegister;
 use crate::GameBoy;
@@ -28,12 +28,7 @@ type Cycles = u8;
 
 // INC/DEC function
 impl GameBoy {
-    fn increment_r(
-        &mut self,
-        register: OneByteRegister,
-        operator: Operator,
-        amount: u8,
-    ) {
+    fn increment_r(&mut self, register: OneByteRegister, operator: Operator, amount: u8) {
         let register = self.registers.get_r(register);
 
         *register = match operator {
@@ -48,11 +43,7 @@ impl GameBoy {
 
 // LD functions
 impl GameBoy {
-    fn load_r_into_r(
-        &mut self,
-        register_to_be_loaded: OneByteRegister,
-        register: OneByteRegister,
-    ) {
+    fn load_r_into_r(&mut self, register_to_be_loaded: OneByteRegister, register: OneByteRegister) {
         let register_to_be_loaded = *self.registers.get_r(register_to_be_loaded);
         let register = self.registers.get_r(register);
 
@@ -68,7 +59,8 @@ impl GameBoy {
 
     fn load_r_into_io(&mut self, register: OneByteRegister) {
         let register = *self.registers.get_r(register);
-        self.bus.write_byte((IO_START + self.next(1) as usize) as u16, register);
+        self.bus
+            .write_byte((IO_START + self.next(1) as usize) as u16, register);
     }
 
     fn load_io_into_r(&mut self, register: OneByteRegister) {
@@ -82,17 +74,20 @@ impl GameBoy {
 // CP functions
 impl GameBoy {
     fn compare_ra_to_i(&mut self) {
-        self.flags.update_zero_flag(self.registers.a.wrapping_sub(self.next(1)));
+        self.flags
+            .update_zero_flag(self.registers.a.wrapping_sub(self.next(1)));
     }
 
     fn compare_ra_to_r(&mut self, register: OneByteRegister) {
         let register = *self.registers.get_r(register);
-        self.flags.update_zero_flag(self.registers.a.wrapping_sub(register));
+        self.flags
+            .update_zero_flag(self.registers.a.wrapping_sub(register));
     }
 
     fn compare_ra_to_ram(&mut self, address: u16) {
         let ram = self.bus.read(address);
-        self.flags.update_zero_flag(self.registers.a.wrapping_sub(ram));
+        self.flags
+            .update_zero_flag(self.registers.a.wrapping_sub(ram));
     }
 }
 
