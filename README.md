@@ -1,14 +1,11 @@
-# <center>GameMan</center>
-> <br>
-> <center>The GameBoy emulator that does not play around™️</center>
-> <br>
-<pre></pre>
+# <p align="center">GameMan</p>
+> The GameBoy emulator that does not play around™
 
 # What can the emulator actually run?
 I am at a *very* early stage, this emulator will **not** run *any* game.  
 Here's a list of things I need to implement
 
-- [-] GPU
+- [ ] GPU
     - [x] Barebones and graphicless implementation
     - [ ] Background rendering
     - [ ] Window rendering
