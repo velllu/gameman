@@ -113,40 +113,6 @@ impl core::ops::IndexMut<u16> for Bus {
     }
 }
 
-// impl Bus {
-//     // pub fn write_byte(&mut self, address: u16, value: u8) {
-//     //     match address {
-//     //         0x8000..=0x9FFF => self.video_ram[(address - 0x8000) as usize] = value,
-//     //         0xA000..=0xBFFF => todo!(), // external ram
-//     //         0xC000..=0xDFFF => self.work_ram[(address - 0xC000) as usize] = value,
-//     //         0xE000..=0xFDFF => todo!(), // mirror ram
-//     //         0xFE00..=0xFE9F => self.eom[(address - 0xFE00) as usize] = value,
-//     //         0xFF00..=0xFF7F => self.io[(address - IO_START as u16) as usize] = value,
-//     //         0xFF80..=0xFFFE => self.high_ram[(address - 0xFF80) as usize] = value,
-//     //         0xFFFF => self.ie = value,
-
-//     //         _ => {
-//     //             println!("Invalid writing");
-//     //         }
-//     //     }
-//     // }
-
-//     pub fn read(&self, address: u16) -> u8 {
-//         match address {
-//             0x8000..=0x9FFF => self.video_ram[(address - 0x8000) as usize],
-//             0xA000..=0xBFFF => todo!(), // external ram
-//             0xC000..=0xDFFF => self.work_ram[(address - 0xC000) as usize],
-//             0xE000..=0xFDFF => todo!(), // mirror ram
-//             0xFE00..=0xFE9F => self.eom[(address - 0xFE00) as usize],
-//             0xFF00..=0xFF7F => self.io[(address - IO_START as u16) as usize],
-//             0xFF80..=0xFFFE => self.high_ram[(address - 0xFF80) as usize],
-//             0xFFFF => self.ie,
-
-//             _ => 0xFF,
-//         }
-//     }
-// }
-
 impl Bus {
     /// Returns the opcode at specified address
     pub fn read_from_rom(&self, pc: u16) -> u8 {
