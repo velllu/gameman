@@ -1,80 +1,77 @@
-#![allow(unused)]
-
-use std::marker::Copy;
-
-use crate::GameBoy;
+use crate::{consts::display::DISPLAY_SIZE_X, GameBoy};
 
 #[derive(PartialEq)]
-enum GPUState {
+pub enum GPUState {
     OAMSearch,
     PixelTransfer,
     HBlank,
     VBlank,
 }
 
-#[derive(Clone, Copy)]
-enum Source {
-    Background,
-    Window,
-}
-
-#[derive(Clone, Copy)]
-enum Color {
-    One,
-    Two,
-    Three,
-    Four,
-}
-
-#[derive(Clone, Copy)]
-struct PixelData {
-    source: Source,
-    color: Color,
-}
-
 pub struct GPU {
-    state: GPUState,
-
-    /// The buffer of the pixels to push
-    fifo: [Option<PixelData>; 8],
+    pub state: GPUState,
+    already_outputted_pixel: u32,
+    steps: u32,
 }
 
 impl GPU {
     pub(crate) fn new() -> Self {
         Self {
             state: GPUState::OAMSearch,
-            fifo: [None; 8],
+            already_outputted_pixel: 0,
+            steps: 0,
         }
     }
 }
 
 // TODO: During pixel transfer mode, the vram should not be accessible
 // TODO: During pixel transfer mode and oam search mode, the oam should not be accessible
+// TODO: Document each step of the GPU
 
 impl GameBoy {
-    /// We need to search in the Object Attribute Memory the sprites that are actually
-    /// visible in the current line
     fn oam_search(&mut self) {
-        // TODO
-        self.gpu.state = GPUState::PixelTransfer;
+        if self.gpu.steps == 40 {
+            self.gpu.state = GPUState::PixelTransfer;
+        }
     }
 
     fn pixel_transfer(&mut self) {
-        // TODO
-        self.gpu.state = GPUState::HBlank;
+        println!("{}", self.gpu.already_outputted_pixel);
+        self.gpu.already_outputted_pixel += 1;
+        if self.gpu.already_outputted_pixel == DISPLAY_SIZE_X as u32 {
+            self.gpu.state = GPUState::HBlank;
+        }
     }
 
     fn hblank(&mut self) {
-        // TODO
-        self.gpu.state = GPUState::VBlank;
+        if self.gpu.steps == 456 {
+            self.gpu.steps = 0;
+            self.gpu.already_outputted_pixel = 0;
+            self.bus
+                .write_byte(0xFF44, self.bus.read(0xFF44).wrapping_add(1));
+
+            if self.bus.read(0xFF44) == 144 {
+                self.gpu.state = GPUState::VBlank;
+            } else {
+                self.gpu.state = GPUState::OAMSearch;
+            }
+        }
     }
 
     fn vblank(&mut self) {
-        // TODO
         self.gpu.state = GPUState::OAMSearch;
+        if self.gpu.steps == 456 {
+            self.gpu.steps = 0;
+            self.bus
+                .write_byte(0xFF44, self.bus.read(0xFF44).wrapping_add(1));
+
+            if self.bus.read(0xFF44) == 153 {
+                self.bus.write_byte(0xFF44, 0);
+                self.gpu.state = GPUState::OAMSearch;
+            }
+        }
     }
 
-    #[rustfmt::skip]
     pub(crate) fn gpu_step(&mut self) {
         match self.gpu.state {
             GPUState::OAMSearch => self.oam_search(),
@@ -82,5 +79,7 @@ impl GameBoy {
             GPUState::HBlank => self.hblank(),
             GPUState::VBlank => self.vblank(),
         }
+
+        self.gpu.steps += 1;
     }
 }
