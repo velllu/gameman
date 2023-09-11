@@ -36,7 +36,6 @@ impl GameBoy {
     }
 
     fn pixel_transfer(&mut self) {
-        println!("{}", self.gpu.already_outputted_pixel);
         self.gpu.already_outputted_pixel += 1;
         if self.gpu.already_outputted_pixel == DISPLAY_SIZE_X as u32 {
             self.gpu.state = GPUState::HBlank;
@@ -47,7 +46,7 @@ impl GameBoy {
         if self.gpu.steps == 456 {
             self.gpu.steps = 0;
             self.gpu.already_outputted_pixel = 0;
-            self.bus[0xFF44] = self.bus[0xFF44_u16.wrapping_add(1)];
+            self.bus[0xFF44] = self.bus[0xFF44].wrapping_add(1);
 
             if self.bus[0xFF44] == 144 {
                 self.gpu.state = GPUState::VBlank;

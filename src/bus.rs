@@ -18,6 +18,11 @@ pub struct Bus {
     rom: [u8; ROM_SIZE],
     video_ram: [u8; VIDEO_RAM_SIZE],
     work_ram: [u8; WORK_RAM_SIZE],
+
+    /// This is just a number that is never used.
+    /// It's useful when I want the program to not crash when it writes/reads something
+    /// it shouldn't
+    burner_value: u8,
 }
 
 #[rustfmt::skip]
@@ -62,6 +67,7 @@ impl Bus {
             rom,
             video_ram: [0u8; VIDEO_RAM_SIZE],
             work_ram: [0u8; WORK_RAM_SIZE],
+            burner_value: 0,
         })
     }
 
@@ -74,6 +80,7 @@ impl Bus {
             rom,
             video_ram: [0u8; VIDEO_RAM_SIZE],
             work_ram: [0u8; WORK_RAM_SIZE],
+            burner_value: 0,
         }
     }
 }
@@ -91,7 +98,7 @@ impl core::ops::Index<u16> for Bus {
             0xFF00..=0xFF7F => &self.io[(address - IO_START as u16) as usize],
             0xFF80..=0xFFFE => &self.high_ram[(address - 0xFF80) as usize],
             0xFFFF => &self.ie,
-            _ => todo!(),
+            _ => &self.burner_value,
         }
     }
 }
@@ -108,7 +115,7 @@ impl core::ops::IndexMut<u16> for Bus {
             0xFF00..=0xFF7F => &mut self.io[(address - IO_START as u16) as usize],
             0xFF80..=0xFFFE => &mut self.high_ram[(address - 0xFF80) as usize],
             0xFFFF => &mut self.ie,
-            _ => todo!(),
+            _ => &mut self.burner_value,
         }
     }
 }
