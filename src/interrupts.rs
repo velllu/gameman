@@ -43,9 +43,9 @@ impl GameBoy {
         let (p, c) = split_u16_into_two_u8s(self.registers.pc);
 
         self.registers.sp = self.registers.sp.wrapping_sub(1);
-        self.bus.write_byte(self.registers.sp, p);
+        self.bus[self.registers.sp] = p;
         self.registers.sp = self.registers.sp.wrapping_sub(1);
-        self.bus.write_byte(self.registers.sp, c);
+        self.bus[self.registers.sp] = c;
 
         self.registers.pc = pc_location;
     }
@@ -55,15 +55,15 @@ impl GameBoy {
             return;
         }
 
-        let is_enabled: Interrupts = self.bus.read(0xFFFF).into();
-        let mut value: Interrupts = self.bus.read(0xFF0F).into();
+        let is_enabled: Interrupts = self.bus[0xFFFF].into();
+        let mut value: Interrupts = self.bus[0xFF0F].into();
 
         // TODO: Make code DRYer
         if is_enabled.vblank && value.vblank {
             self.interrupt(0x40);
 
             value.vblank = false;
-            self.bus.write_byte(0xFF0F, value.into());
+            self.bus[0xFF0F] = value.into();
         }
     }
 }

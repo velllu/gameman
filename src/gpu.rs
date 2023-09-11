@@ -47,10 +47,9 @@ impl GameBoy {
         if self.gpu.steps == 456 {
             self.gpu.steps = 0;
             self.gpu.already_outputted_pixel = 0;
-            self.bus
-                .write_byte(0xFF44, self.bus.read(0xFF44).wrapping_add(1));
+            self.bus[0xFF44] = self.bus[0xFF44_u16.wrapping_add(1)];
 
-            if self.bus.read(0xFF44) == 144 {
+            if self.bus[0xFF44] == 144 {
                 self.gpu.state = GPUState::VBlank;
             } else {
                 self.gpu.state = GPUState::OAMSearch;
@@ -62,11 +61,10 @@ impl GameBoy {
         self.gpu.state = GPUState::OAMSearch;
         if self.gpu.steps == 456 {
             self.gpu.steps = 0;
-            self.bus
-                .write_byte(0xFF44, self.bus.read(0xFF44).wrapping_add(1));
+            self.bus[0xFF44] = self.bus[0xFF44].wrapping_add(1);
 
-            if self.bus.read(0xFF44) == 153 {
-                self.bus.write_byte(0xFF44, 0);
+            if self.bus[0xFF44] == 153 {
+                self.bus[0xFF44] = 0;
                 self.gpu.state = GPUState::OAMSearch;
             }
         }

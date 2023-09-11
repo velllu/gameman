@@ -75,7 +75,7 @@ mod cpu {
 
         gb.step();
 
-        assert_eq!(0x01, gb.bus.read(gb.registers.get_hl().wrapping_sub(1)));
+        assert_eq!(0x01, gb.bus[gb.registers.get_hl().wrapping_sub(1)]);
         assert_eq!(0x01, gb.registers.l);
     }
 

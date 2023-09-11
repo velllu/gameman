@@ -59,15 +59,16 @@ impl GameBoy {
 
     fn load_r_into_io(&mut self, register: OneByteRegister) {
         let register = *self.registers.get_r(register);
-        self.bus
-            .write_byte((IO_START + self.next(1) as usize) as u16, register);
+        let i = self.next(1);
+
+        self.bus[(IO_START + i as usize) as u16] = register;
     }
 
     fn load_io_into_r(&mut self, register: OneByteRegister) {
         let i = self.next(1);
 
         let register = self.registers.get_r(register);
-        *register = self.bus.read((IO_START + i as usize) as u16)
+        *register = self.bus[(IO_START + i as usize) as u16]
     }
 }
 
@@ -85,7 +86,7 @@ impl GameBoy {
     }
 
     fn compare_ra_to_ram(&mut self, address: u16) {
-        let ram = self.bus.read(address);
+        let ram = self.bus[address];
         self.flags
             .update_zero_flag(self.registers.a.wrapping_sub(ram));
     }
@@ -224,25 +225,25 @@ impl GameBoy {
             0x3E => { self.load_i_into_r(OneByteRegister::A); (2, 2) },
 
             // Load R into ram
-            0x02 => { self.bus.write_byte(self.registers.get_bc(), self.registers.a); (1, 2) },
-            0x12 => { self.bus.write_byte(self.registers.get_de(), self.registers.a); (1, 2) },
-            0x36 => { self.bus.write_byte(self.registers.get_hl(), self.next(1)); (2, 3) },
-            0x70 => { self.bus.write_byte(self.registers.get_hl(), self.registers.b); (1, 2) },
-            0x71 => { self.bus.write_byte(self.registers.get_hl(), self.registers.c); (1, 2) },
-            0x72 => { self.bus.write_byte(self.registers.get_hl(), self.registers.d); (1, 2) },
-            0x73 => { self.bus.write_byte(self.registers.get_hl(), self.registers.e); (1, 2) },
-            0x74 => { self.bus.write_byte(self.registers.get_hl(), self.registers.h); (1, 2) },
-            0x75 => { self.bus.write_byte(self.registers.get_hl(), self.registers.l); (1, 2) },
-            0x77 => { self.bus.write_byte(self.registers.get_hl(), self.registers.a); (1, 2) },
+            0x02 => { self.bus[self.registers.get_bc()] = self.registers.a; (1, 2) },
+            0x12 => { self.bus[self.registers.get_de()] = self.registers.a; (1, 2) },
+            0x36 => { self.bus[self.registers.get_hl()] = self.next(1); (2, 3) },
+            0x70 => { self.bus[self.registers.get_hl()] = self.registers.b; (1, 2) },
+            0x71 => { self.bus[self.registers.get_hl()] = self.registers.c; (1, 2) },
+            0x72 => { self.bus[self.registers.get_hl()] = self.registers.d; (1, 2) },
+            0x73 => { self.bus[self.registers.get_hl()] = self.registers.e; (1, 2) },
+            0x74 => { self.bus[self.registers.get_hl()] = self.registers.h; (1, 2) },
+            0x75 => { self.bus[self.registers.get_hl()] = self.registers.l; (1, 2) },
+            0x77 => { self.bus[self.registers.get_hl()] = self.registers.a; (1, 2) },
 
             0x22 => {
-                self.bus.write_byte(self.registers.get_hl(), self.registers.a);
+                self.bus[self.registers.get_hl()] = self.registers.a;
                 self.registers.set_hl(self.registers.get_hl().wrapping_add(1));
                 (1, 2)
             },
 
             0x32 => {
-                self.bus.write_byte(self.registers.get_hl(), self.registers.a);
+                self.bus[self.registers.get_hl()] = self.registers.a;
                 self.registers.set_hl(self.registers.get_hl().wrapping_sub(1));
                 (1, 2)
             },
@@ -254,13 +255,15 @@ impl GameBoy {
             0xF0 => { self.load_io_into_r(OneByteRegister::A); (2, 3) },
 
             // Load R into RAM, with address specified by II
-            0xEA => { self.bus.write_byte(self.next_two(), self.registers.a); (3, 4) },
+            0xEA => { let ii = self.next_two(); self.bus[ii] = self.registers.a; (3, 4) },
             0x08 => {
                 // This is a bit different from `0xEA`, because we need to load SP in,
                 // which is 2 bytes long
                 let (s, p) = split_u16_into_two_u8s(self.registers.sp);
-                self.bus.write_byte(self.next_two(), s);
-                self.bus.write_byte(self.next_two().wrapping_add(1), p);
+
+                let ii = self.next_two();
+                self.bus[ii] = s;
+                self.bus[ii.wrapping_add(1)] = p;
 
                 (3, 5)
             }
