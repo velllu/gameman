@@ -28,10 +28,6 @@ impl Flags {
 
 impl Flags {
     pub(crate) fn update_zero_flag(&mut self, result: u8) {
-        if result == 0 {
-            self.zero = true;
-        } else {
-            self.zero = false;
-        }
+        self.zero = result == 0;
     }
 }

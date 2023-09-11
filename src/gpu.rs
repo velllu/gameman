@@ -8,13 +8,13 @@ pub enum GPUState {
     VBlank,
 }
 
-pub struct GPU {
+pub struct Gpu {
     pub state: GPUState,
     already_outputted_pixel: u32,
     steps: u32,
 }
 
-impl GPU {
+impl Gpu {
     pub(crate) fn new() -> Self {
         Self {
             state: GPUState::OAMSearch,

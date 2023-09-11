@@ -5,7 +5,7 @@ use common::merge_two_u8s_into_u16;
 use consts::bus::ROM_SIZE;
 use errors::EmuError;
 use flags::Flags;
-use gpu::GPU;
+use gpu::Gpu;
 use registers::Registers;
 use screen::Screen;
 
@@ -28,7 +28,7 @@ pub struct GameBoy {
     pub screen: Screen,
     pub registers: Registers,
     pub flags: Flags,
-    pub gpu: GPU,
+    pub gpu: Gpu,
 
     /// Some gameboy opcodes have a prefix `0xCB`
     pub is_cb: bool,
@@ -44,7 +44,7 @@ impl GameBoy {
             screen: Screen::new(),
             registers: Registers::new(),
             flags: Flags::new(),
-            gpu: GPU::new(),
+            gpu: Gpu::new(),
             is_cb: false,
             current_opcode: None,
         })
@@ -56,7 +56,7 @@ impl GameBoy {
             screen: Screen::new(),
             registers: Registers::new(),
             flags: Flags::new(),
-            gpu: GPU::new(),
+            gpu: Gpu::new(),
             is_cb: false,
             current_opcode: None,
         }

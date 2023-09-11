@@ -103,7 +103,10 @@ impl GameBoy {
         if jump_amount >= 0 {
             self.registers.pc = self.registers.pc.wrapping_add(jump_amount as u16);
         } else {
-            self.registers.pc = self.registers.pc.wrapping_sub(jump_amount.abs() as u16);
+            self.registers.pc = self
+                .registers
+                .pc
+                .wrapping_sub(jump_amount.unsigned_abs() as u16);
         }
     }
 }
@@ -122,10 +125,8 @@ impl GameBoy {
 }
 
 impl GameBoy {
-    pub(crate) fn interpret_cb_opcode(&mut self, opcode: u8) -> (Bytes, Cycles) {
-        match opcode {
-            _ => todo!(),
-        }
+    pub(crate) fn interpret_cb_opcode(&mut self, _opcode: u8) -> (Bytes, Cycles) {
+        todo!();
     }
 
     #[rustfmt::skip]
@@ -319,7 +320,7 @@ impl GameBoy {
             0x38 =>
                 if self.flags.carry { self.jump_relative(); (2, 3) }
                 else { (2, 2) }
-            
+
             // Bitwise operations
             0xA8 => { self.xor_r(OneByteRegister::B); (1, 1) },
             0xA9 => { self.xor_r(OneByteRegister::C); (1, 1) },

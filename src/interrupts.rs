@@ -28,7 +28,7 @@ impl From<Interrupts> for u8 {
     fn from(value: Interrupts) -> Self {
         let mut result: u8 = 0;
 
-        result |= (value.vblank as u8) << 0;
+        result |= value.vblank as u8;
         result |= (value.lcd as u8) << 1;
         result |= (value.timer as u8) << 2;
         result |= (value.serial as u8) << 3;
