@@ -8,6 +8,10 @@ pub(crate) mod bus {
     pub(crate) const WORK_RAM_SIZE: usize = 8192;
 }
 
+pub(crate) mod gpu {
+    pub(crate) const LY: u16 = 0xFF44;
+}
+
 pub(crate) mod display {
     pub(crate) const DISPLAY_SIZE_X: usize = 160;
     pub(crate) const DISPLAY_SIZE_Y: usize = 144;

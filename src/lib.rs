@@ -68,7 +68,7 @@ impl GameBoy {
         self.current_opcode = Some(opcode);
 
         // CPU - Opcodes
-        let opcode_data = if self.is_cb {
+        let (bytes, cycles) = if self.is_cb {
             self.interpret_cb_opcode(opcode)
         } else {
             self.interpret_opcode(opcode)
@@ -79,14 +79,20 @@ impl GameBoy {
             return;
         }
 
-        self.registers.pc = self.registers.pc.wrapping_add(opcode_data.0 as u16);
+        self.registers.pc = self.registers.pc.wrapping_add(bytes as u16);
         self.is_cb = false;
 
         // CPU - Interrupts
         self.execute_interrupts();
 
         // GPU
-        self.gpu_step();
+        for _ in 0..(cycles * 4) {
+            // A GPU tick is 1/4 of a cycle, so it needs to be called 4 times for every
+            // cycle. TODO: This is not actually all that accurate to the actual GameBoy
+            // but to change this I will have to redesign the CPU to count cycles
+            // procedurally and call `gpu_step()` for every cycle from there
+            self.tick();
+        }
     }
 }
 
