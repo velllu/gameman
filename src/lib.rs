@@ -30,9 +30,6 @@ pub struct GameBoy {
     pub flags: Flags,
     pub gpu: Gpu,
 
-    /// Some gameboy opcodes have a prefix `0xCB`
-    pub is_cb: bool,
-
     /// This is `None` when the `GameBoy.step()` function is never ran
     pub current_opcode: Option<u8>,
 }
@@ -45,7 +42,6 @@ impl GameBoy {
             registers: Registers::new(),
             flags: Flags::new(),
             gpu: Gpu::new(),
-            is_cb: false,
             current_opcode: None,
         })
     }
@@ -57,7 +53,6 @@ impl GameBoy {
             registers: Registers::new(),
             flags: Flags::new(),
             gpu: Gpu::new(),
-            is_cb: false,
             current_opcode: None,
         }
     }
@@ -68,19 +63,8 @@ impl GameBoy {
         self.current_opcode = Some(opcode);
 
         // CPU - Opcodes
-        let (bytes, cycles) = if self.is_cb {
-            self.interpret_cb_opcode(opcode)
-        } else {
-            self.interpret_opcode(opcode)
-        };
-
-        if opcode == 0xCB {
-            self.is_cb = true;
-            return;
-        }
-
+        let (bytes, cycles) = self.interpret_opcode(opcode);
         self.registers.pc = self.registers.pc.wrapping_add(bytes as u16);
-        self.is_cb = false;
 
         // CPU - Interrupts
         self.execute_interrupts();

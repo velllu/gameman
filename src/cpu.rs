@@ -140,8 +140,10 @@ impl GameBoy {
 }
 
 impl GameBoy {
-    pub(crate) fn interpret_cb_opcode(&mut self, _opcode: u8) -> (Bytes, Cycles) {
-        todo!();
+    pub(crate) fn interpret_cb_opcode(&mut self, opcode: u8) -> (Bytes, Cycles) {
+        match opcode {
+            _ => panic!("Opcode 0xcb{:x} not implemented yet", opcode),
+        }
     }
 
     #[rustfmt::skip]
@@ -152,7 +154,12 @@ impl GameBoy {
         // - They are harder to debug, and harder to read for rust beginners
 
         match opcode {
+            // Misc
             0x00 => (1, 1), // NOP, does nothing
+            0xCB => {
+                self.registers.pc = self.registers.pc.wrapping_add(1);
+                self.interpret_cb_opcode(self.next(0))
+            },
 
             // Increment R
             0x04 => { self.increment_r(OneByteRegister::B, Operator::Inc, 1); (1, 1) },

@@ -17,10 +17,6 @@ fn main() {
 
         gameboy.step();
 
-        if gameboy.is_cb {
-            println!("CB opcode:")
-        }
-
         println!("OPCODE: {:x}", gameboy.current_opcode.unwrap());
         println!("");
     }
