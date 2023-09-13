@@ -112,6 +112,20 @@ impl GameBoy {
     }
 }
 
+// Call functions
+impl GameBoy {
+    fn call(&mut self) {
+        let (p, c) = split_u16_into_two_u8s(self.registers.pc);
+
+        self.registers.sp = self.registers.sp.wrapping_sub(1);
+        self.bus[self.registers.sp] = c;
+        self.registers.sp = self.registers.sp.wrapping_sub(1);
+        self.bus[self.registers.sp] = p;
+
+        self.registers.pc = self.next_two();
+    }
+}
+
 // Bitwise operation functions (not all of them as of now)
 impl GameBoy {
     fn xor_r(&mut self, register: OneByteRegister) {
@@ -323,6 +337,25 @@ impl GameBoy {
             0x38 =>
                 if self.flags.carry { self.jump_relative(); (2, 3) }
                 else { (2, 2) }
+
+            // Calls
+            0xCD => { self.call(); (0, 6) },
+
+            0xC4 =>
+                if !self.flags.zero { self.call(); (0, 6) }
+                else { (3, 3) }
+
+            0xCC =>
+                if self.flags.zero { self.call(); (0, 6) }
+                else { (3, 3) }
+
+            0xD4 =>
+                if !self.flags.carry { self.call(); (0, 6) }
+                else { (3, 3) }
+
+            0xDC =>
+                if self.flags.carry { self.call(); (0, 6) }
+                else { (3, 3) }
 
             // Bitwise operations
             0xA8 => { self.xor_r(OneByteRegister::B); (1, 1) },
