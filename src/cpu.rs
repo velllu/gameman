@@ -259,13 +259,13 @@ impl GameBoy {
 
             0x22 => {
                 self.bus[self.registers.get_hl()] = self.registers.a;
-                self.registers.set_hl(self.registers.get_hl().wrapping_add(1));
+                self.registers.increment_hl(1, Operator::Inc);
                 (1, 2)
             },
 
             0x32 => {
                 self.bus[self.registers.get_hl()] = self.registers.a;
-                self.registers.set_hl(self.registers.get_hl().wrapping_sub(1));
+                self.registers.increment_hl(1, Operator::Sub);
                 (1, 2)
             },
 

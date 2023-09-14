@@ -1,4 +1,4 @@
-use crate::common::{merge_two_u8s_into_u16, split_u16_into_two_u8s};
+use crate::common::{merge_two_u8s_into_u16, split_u16_into_two_u8s, Operator};
 use std::fmt::Debug;
 
 pub struct Registers {
@@ -75,6 +75,23 @@ macro_rules! get_rr {
     };
 }
 
+macro_rules! increment_rr {
+    ($name:ident, $first_r:ident, $second_r:ident) => {
+        pub(crate) fn $name(&mut self, value: u16, operation: Operator) {
+            let rr = merge_two_u8s_into_u16(self.$first_r, self.$second_r);
+            let rr = match operation {
+                Operator::Inc => rr.wrapping_add(value),
+                Operator::Sub => rr.wrapping_sub(value),
+            };
+
+            let (r1, r2) = split_u16_into_two_u8s(rr);
+
+            self.$first_r = r1;
+            self.$second_r = r2;
+        }
+    };
+}
+
 impl Registers {
     pub(crate) fn get_r(&mut self, register: OneByteRegister) -> &mut u8 {
         match register {
@@ -88,8 +105,8 @@ impl Registers {
         }
     }
 
-    // All this `set_rr()` functions are done because we cannot have a `get_rr` as
-    // registers are stored as a one byte register
+    // All this `set_rr()`, `get_rr()`, `increment_rr()` functions are done because we
+    // cannot have a `get_rr` as registers are stored as a one byte register
 
     set_rr! {set_bc, b, c}
     get_rr! {get_bc, b, c}
@@ -99,4 +116,5 @@ impl Registers {
 
     set_rr! {set_hl, h, l}
     get_rr! {get_hl, h, l}
+    increment_rr! {increment_hl, h, l}
 }
