@@ -57,6 +57,24 @@ pub(crate) enum OneByteRegister {
     L,
 }
 
+macro_rules! set_rr {
+    ($name:ident, $first_r:ident, $second_r:ident) => {
+        pub(crate) fn $name(&mut self, value: u16) {
+            let (register1, register2) = split_u16_into_two_u8s(value);
+            self.$first_r = register1;
+            self.$second_r = register2;
+        }
+    };
+}
+
+macro_rules! get_rr {
+    ($name:ident, $first_r:ident, $second_r:ident) => {
+        pub(crate) fn $name(&self) -> u16 {
+            merge_two_u8s_into_u16(self.$first_r, self.$second_r)
+        }
+    };
+}
+
 impl Registers {
     pub(crate) fn get_r(&mut self, register: OneByteRegister) -> &mut u8 {
         match register {
@@ -73,33 +91,12 @@ impl Registers {
     // All this `set_rr()` functions are done because we cannot have a `get_rr` as
     // registers are stored as a one byte register
 
-    pub(crate) fn set_bc(&mut self, value: u16) {
-        let (register_b, register_c) = split_u16_into_two_u8s(value);
-        self.b = register_b;
-        self.c = register_c;
-    }
+    set_rr! {set_bc, b, c}
+    get_rr! {get_bc, b, c}
 
-    pub(crate) fn get_bc(&self) -> u16 {
-        merge_two_u8s_into_u16(self.b, self.c)
-    }
+    set_rr! {set_de, d, e}
+    get_rr! {get_de, d, e}
 
-    pub(crate) fn set_de(&mut self, value: u16) {
-        let (register_d, register_e) = split_u16_into_two_u8s(value);
-        self.d = register_d;
-        self.e = register_e;
-    }
-
-    pub(crate) fn get_de(&self) -> u16 {
-        merge_two_u8s_into_u16(self.d, self.e)
-    }
-
-    pub(crate) fn set_hl(&mut self, value: u16) {
-        let (register_h, register_l) = split_u16_into_two_u8s(value);
-        self.h = register_h;
-        self.l = register_l;
-    }
-
-    pub(crate) fn get_hl(&self) -> u16 {
-        merge_two_u8s_into_u16(self.h, self.l)
-    }
+    set_rr! {set_hl, h, l}
+    get_rr! {get_hl, h, l}
 }

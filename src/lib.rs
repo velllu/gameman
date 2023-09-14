@@ -74,7 +74,7 @@ impl GameBoy {
             // A GPU tick is 1/4 of a cycle, so it needs to be called 4 times for every
             // cycle. TODO: This is not actually all that accurate to the actual GameBoy
             // but to change this I will have to redesign the CPU to count cycles
-            // procedurally and call `gpu_step()` for every cycle from there
+            // procedurally and call `Gpu.tick()` for every cycle from there
             self.tick();
         }
     }
