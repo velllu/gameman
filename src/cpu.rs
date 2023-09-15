@@ -70,6 +70,11 @@ impl GameBoy {
         let register = self.registers.get_r(register);
         *register = self.bus[(IO_START + i as usize) as u16]
     }
+
+    fn load_ram_into_r(&mut self, address: u16, register: OneByteRegister) {
+        let register = self.registers.get_r(register);
+        *register = self.bus[address];
+    }
 }
 
 // CP functions
@@ -288,6 +293,27 @@ impl GameBoy {
 
                 (3, 5)
             }
+
+            // Load RAM into R
+            0x0A => { self.load_ram_into_r(self.registers.get_bc(), OneByteRegister::A); (1, 2) },
+            0x1A => { self.load_ram_into_r(self.registers.get_de(), OneByteRegister::A); (1, 2) },
+            0x46 => { self.load_ram_into_r(self.registers.get_hl(), OneByteRegister::B); (1, 2) },
+            0x4E => { self.load_ram_into_r(self.registers.get_hl(), OneByteRegister::C); (1, 2) },
+            0x56 => { self.load_ram_into_r(self.registers.get_hl(), OneByteRegister::D); (1, 2) },
+            0x5E => { self.load_ram_into_r(self.registers.get_hl(), OneByteRegister::E); (1, 2) },
+            0x66 => { self.load_ram_into_r(self.registers.get_hl(), OneByteRegister::H); (1, 2) },
+            0x6E => { self.load_ram_into_r(self.registers.get_hl(), OneByteRegister::L); (1, 2) },
+            0x7E => { self.load_ram_into_r(self.registers.get_hl(), OneByteRegister::A); (1, 2) },
+            0x2A => {
+                self.load_ram_into_r(self.registers.get_hl(), OneByteRegister::A);
+                self.increment_r(OneByteRegister::A, Operator::Inc, 1);
+                (1, 2)
+            },
+            0x3A => {
+                self.load_ram_into_r(self.registers.get_hl(), OneByteRegister::A);
+                self.increment_r(OneByteRegister::A, Operator::Sub, 1);
+                (1, 2)
+            },
 
             // Compare
             0xB8 => { self.compare_ra_to_r(OneByteRegister::B); (1, 1) },
