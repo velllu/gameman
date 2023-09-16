@@ -57,11 +57,8 @@ impl GameBoy {
         *register = i;
     }
 
-    fn load_r_into_io(&mut self, register: OneByteRegister) {
-        let register = *self.registers.get_r(register);
-        let i = self.next(1);
-
-        self.bus[(IO_START + i as usize) as u16] = register;
+    fn load_ra_into_io(&mut self, address_offset: u8) {
+        self.bus[(IO_START + address_offset as usize) as u16] = self.registers.a;
     }
 
     fn load_io_into_r(&mut self, register: OneByteRegister) {
@@ -274,10 +271,11 @@ impl GameBoy {
                 (1, 2)
             },
 
-            // Load R into IO (yes, only one of this)
-            0xE0 => { self.load_r_into_io(OneByteRegister::A); (2, 3) },
+            // Load R into IO
+            0xE0 => { self.load_ra_into_io(self.next(1)); (2, 3) },
+            0xE2 => { self.load_ra_into_io(self.registers.c); (2, 3) },
 
-            // Load IO into R (still only one of this)
+            // Load IO into R (only one of this)
             0xF0 => { self.load_io_into_r(OneByteRegister::A); (2, 3) },
 
             // Load R into RAM, with address specified by II
