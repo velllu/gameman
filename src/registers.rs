@@ -110,9 +110,11 @@ impl Registers {
 
     set_rr! {set_bc, b, c}
     get_rr! {get_bc, b, c}
+    increment_rr! {increment_bc, b, c}
 
     set_rr! {set_de, d, e}
     get_rr! {get_de, d, e}
+    increment_rr! {increment_de, d, e}
 
     set_rr! {set_hl, h, l}
     get_rr! {get_hl, h, l}

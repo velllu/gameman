@@ -181,6 +181,18 @@ impl GameBoy {
             0x2D => { self.increment_r(OneByteRegister::L, Operator::Sub, 1); (1, 1) },
             0x3D => { self.increment_r(OneByteRegister::A, Operator::Sub, 1); (1, 1) },
 
+            // Increment RR
+            0x03 => { self.registers.increment_bc(1, Operator::Inc); (1, 2) },
+            0x13 => { self.registers.increment_de(1, Operator::Inc); (1, 2) },
+            0x23 => { self.registers.increment_hl(1, Operator::Inc); (1, 2) },
+            0x33 => { self.registers.sp = self.registers.sp.wrapping_add(1); (1, 2) },
+
+            // Decrement RR
+            0x0B => { self.registers.increment_bc(1, Operator::Sub); (1, 2) }
+            0x1B => { self.registers.increment_de(1, Operator::Sub); (1, 2) }
+            0x2B => { self.registers.increment_hl(1, Operator::Sub); (1, 2) }
+            0x3B => { self.registers.sp = self.registers.sp.wrapping_sub(1); (1, 2) },
+
             // Load R into R
             0x40 => { self.load_r_into_r(OneByteRegister::B, OneByteRegister::B); (1, 1) },
             0x41 => { self.load_r_into_r(OneByteRegister::C, OneByteRegister::B); (1, 1) },
