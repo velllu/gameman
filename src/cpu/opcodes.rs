@@ -3,16 +3,9 @@ use crate::consts::bus::IO_START;
 use crate::registers::OneByteRegister;
 use crate::GameBoy;
 
+use super::{Bytes, Cycles};
+
 // My preferred opcode reference is: https://meganesu.github.io/generate-gb-opcodes/
-
-/// The number of bytes an opcode needs, examples:
-/// - NOP - 1 byte, since it just takes the "NOP" byte, so every opcode has *at least* 1
-/// byte
-/// - LD BC, d16 - 2 bytes, since it also requires the byte after the opcode
-type Bytes = u8;
-
-/// The amount of "steps" the gameboy needs to execute a specific instruction
-type Cycles = u8;
 
 // You might be wondering why I did not use rust enums to represent all opcodes,
 // I originally did that, and it transforms into spaghetti code really quick, and this is
@@ -147,12 +140,6 @@ impl GameBoy {
 }
 
 impl GameBoy {
-    pub(crate) fn interpret_cb_opcode(&mut self, opcode: u8) -> (Bytes, Cycles) {
-        match opcode {
-            _ => panic!("Opcode 0xcb{:x} not implemented yet", opcode),
-        }
-    }
-
     #[rustfmt::skip]
     pub(crate) fn interpret_opcode(&mut self, opcode: u8) -> (Bytes, Cycles) {
         use BitwiseOperation as Bitwise;
