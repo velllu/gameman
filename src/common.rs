@@ -13,3 +13,9 @@ pub(crate) enum Operator {
     Inc,
     Sub,
 }
+
+pub(crate) enum BitwiseOperation {
+    And,
+    Or,
+    Xor,
+}

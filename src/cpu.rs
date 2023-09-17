@@ -1,4 +1,4 @@
-use crate::common::{merge_two_u8s_into_u16, split_u16_into_two_u8s, Operator};
+use crate::common::{merge_two_u8s_into_u16, split_u16_into_two_u8s, BitwiseOperation, Operator};
 use crate::consts::bus::IO_START;
 use crate::registers::OneByteRegister;
 use crate::GameBoy;
@@ -128,13 +128,18 @@ impl GameBoy {
     }
 }
 
-// Bitwise operation functions (not all of them as of now)
+// Bitwise operation functions
 impl GameBoy {
-    fn xor_r(&mut self, register: OneByteRegister) {
+    fn bitwise_operation_r(&mut self, register: OneByteRegister, operation: BitwiseOperation) {
         let register_a = *self.registers.get_r(OneByteRegister::A);
         let register = self.registers.get_r(register);
 
-        let result = *register ^ register_a;
+        let result = match operation {
+            BitwiseOperation::And => *register & register_a,
+            BitwiseOperation::Or => *register | register_a,
+            BitwiseOperation::Xor => *register ^ register_a,
+        };
+
         *register = result;
 
         self.flags.update_zero_flag(result);
@@ -150,6 +155,8 @@ impl GameBoy {
 
     #[rustfmt::skip]
     pub(crate) fn interpret_opcode(&mut self, opcode: u8) -> (Bytes, Cycles) {
+        use BitwiseOperation as Bitwise;
+
         // I did not choose macros because
         // - Each of them will expand, and make the binary "bigger" (by not a lot, but I
         // still find this less elegant)
@@ -400,14 +407,23 @@ impl GameBoy {
                 if self.flags.carry { self.call(); (0, 6) }
                 else { (3, 3) }
 
-            // Bitwise operations
-            0xA8 => { self.xor_r(OneByteRegister::B); (1, 1) },
-            0xA9 => { self.xor_r(OneByteRegister::C); (1, 1) },
-            0xAA => { self.xor_r(OneByteRegister::D); (1, 1) },
-            0xAB => { self.xor_r(OneByteRegister::E); (1, 1) },
-            0xAC => { self.xor_r(OneByteRegister::H); (1, 1) },
-            0xAD => { self.xor_r(OneByteRegister::L); (1, 1) },
-            0xAF => { self.xor_r(OneByteRegister::A); (1, 1) },
+            // XOR
+            0xA8 => { self.bitwise_operation_r(OneByteRegister::B, Bitwise::Xor); (1, 1) },
+            0xA9 => { self.bitwise_operation_r(OneByteRegister::C, Bitwise::Xor); (1, 1) },
+            0xAA => { self.bitwise_operation_r(OneByteRegister::D, Bitwise::Xor); (1, 1) },
+            0xAB => { self.bitwise_operation_r(OneByteRegister::E, Bitwise::Xor); (1, 1) },
+            0xAC => { self.bitwise_operation_r(OneByteRegister::H, Bitwise::Xor); (1, 1) },
+            0xAD => { self.bitwise_operation_r(OneByteRegister::L, Bitwise::Xor); (1, 1) },
+            0xAF => { self.bitwise_operation_r(OneByteRegister::A, Bitwise::Xor); (1, 1) },
+
+            // OR
+            0xB0 => { self.bitwise_operation_r(OneByteRegister::B, Bitwise::Or); (1, 1) },
+            0xB1 => { self.bitwise_operation_r(OneByteRegister::C, Bitwise::Or); (1, 1) },
+            0xB2 => { self.bitwise_operation_r(OneByteRegister::D, Bitwise::Or); (1, 1) },
+            0xB3 => { self.bitwise_operation_r(OneByteRegister::E, Bitwise::Or); (1, 1) },
+            0xB4 => { self.bitwise_operation_r(OneByteRegister::H, Bitwise::Or); (1, 1) },
+            0xB5 => { self.bitwise_operation_r(OneByteRegister::L, Bitwise::Or); (1, 1) },
+            0xB7 => { self.bitwise_operation_r(OneByteRegister::A, Bitwise::Or); (1, 1) },
 
             // Interrupt stuff
             0xF3 => { self.flags.ime = true; (1, 1) },
