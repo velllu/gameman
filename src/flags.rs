@@ -17,11 +17,11 @@ pub struct Flags {
 impl Flags {
     pub(crate) fn new() -> Self {
         Self {
-            zero: false,
+            zero: true,
             ime: false,
             substraction: false,
-            half_carry: false,
-            carry: false,
+            half_carry: true,
+            carry: true,
         }
     }
 }
