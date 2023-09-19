@@ -92,6 +92,7 @@ mod cpu {
         #[test]
         fn ca() {
             let mut gb = super::create_gb_from_opcode_with_immediate_data(0xCA, 0x42, 0x69);
+            gb.flags.zero = false;
             gb.step();
 
             // this should not jump at all
@@ -101,7 +102,8 @@ mod cpu {
 
     #[test]
     fn jump_relative() {
-        let mut gb = super::create_gb_from_opcode_with_immediate_data(0x20, 0xFF, 0x00);
+        let mut gb = create_gb_from_opcode_with_immediate_data(0x20, 0xFF, 0x00);
+        gb.flags.zero = false;
         gb.step();
 
         assert_eq!(0x0101, gb.registers.pc);
