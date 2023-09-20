@@ -10,7 +10,7 @@ use registers::Registers;
 use screen::Screen;
 
 mod bus;
-mod common;
+pub mod common;
 mod consts;
 mod cpu;
 mod errors;

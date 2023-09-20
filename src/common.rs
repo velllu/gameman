@@ -19,3 +19,17 @@ pub(crate) enum BitwiseOperation {
     Or,
     Xor,
 }
+
+/// Get a specific bit from a `u8`
+/// # Examples
+/// ```
+/// use emulator::common::get_bit;
+///
+/// let x: u8 = 0b0010_0000;
+/// assert_eq!(true, get_bit(0b0010_0000, 5));
+/// assert_eq!(true, get_bit(0b0000_0001, 0));
+/// assert_eq!(false, get_bit(0b0000_0001, 6));
+/// ```
+pub fn get_bit(value: u8, offset: u8) -> bool {
+    (value >> offset) & 0b00000001 == 1
+}
