@@ -108,4 +108,15 @@ mod cpu {
 
         assert_eq!(0x0101, gb.registers.pc);
     }
+
+    #[test]
+    fn return_() {
+        let mut gb = create_gb_from_opcode(0xC9);
+        gb.registers.sp = 0x0020; // We set the pc at 0x0020 so that it fetches a part of
+                                  // the ram that is predictable (high ram is random)
+        gb.step();
+
+        assert_eq!(0x0022, gb.registers.sp);
+        assert_eq!(0x0000, gb.registers.pc);
+    }
 }

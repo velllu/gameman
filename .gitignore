@@ -3,8 +3,8 @@
 /roms
 /registers.xcf
 
-# Devenv
 .devenv*
+devenv.lock
 devenv.local.nix
 
 # direnv
