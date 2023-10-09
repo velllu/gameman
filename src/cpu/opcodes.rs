@@ -123,11 +123,11 @@ impl GameBoy {
 
 impl GameBoy {
     fn return_(&mut self) {
-        self.registers.sp = self.registers.sp.wrapping_add(1);
         let first_byte = self.bus[self.registers.sp];
-
         self.registers.sp = self.registers.sp.wrapping_add(1);
+
         let second_byte = self.bus[self.registers.sp];
+        self.registers.sp = self.registers.sp.wrapping_add(1);
 
         self.registers.pc = merge_two_u8s_into_u16(first_byte, second_byte);
     }
