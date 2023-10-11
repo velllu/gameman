@@ -17,6 +17,10 @@ fn main() {
 
         gameboy.step();
 
+        // if gameboy.current_opcode.unwrap() == 0x00 || gameboy.current_opcode.unwrap() == 0xC8 {
+        //     let _ = io::stdin().read_line(&mut String::new());
+        // }
+
         println!("OPCODE: {:x}", gameboy.current_opcode.unwrap());
         println!("");
     }

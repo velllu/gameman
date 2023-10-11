@@ -7,7 +7,6 @@ use errors::EmuError;
 use flags::Flags;
 use gpu::Gpu;
 use registers::Registers;
-use screen::Screen;
 
 mod bus;
 pub mod common;
@@ -18,14 +17,12 @@ mod flags;
 mod gpu;
 mod interrupts;
 mod registers;
-mod screen;
 
 #[cfg(test)]
 mod tests;
 
 pub struct GameBoy {
     pub bus: Bus,
-    pub screen: Screen,
     pub registers: Registers,
     pub flags: Flags,
     pub gpu: Gpu,
@@ -38,7 +35,6 @@ impl GameBoy {
     pub fn new(rom_path: &str) -> Result<Self, EmuError> {
         Ok(Self {
             bus: Bus::new(rom_path)?,
-            screen: Screen::new(),
             registers: Registers::new(),
             flags: Flags::new(),
             gpu: Gpu::new(),
@@ -49,7 +45,6 @@ impl GameBoy {
     pub fn new_from_rom_array(rom: [u8; ROM_SIZE]) -> Self {
         Self {
             bus: Bus::new_from_rom_array(rom),
-            screen: Screen::new(),
             registers: Registers::new(),
             flags: Flags::new(),
             gpu: Gpu::new(),
