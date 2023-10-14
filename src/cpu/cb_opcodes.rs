@@ -5,6 +5,9 @@ use super::{Bytes, Cycles};
 impl GameBoy {
     fn bit(&mut self, value: u8, offset: u8) {
         self.flags.zero = get_bit(value, offset);
+
+        self.flags
+            .update_zero_flag(if self.flags.zero { 1 } else { 0 });
     }
 }
 
