@@ -1,6 +1,7 @@
 {
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-23.05";
+    fenix.url = "github:nix-community/fenix";
     systems.url = "github:nix-systems/default";
     devenv.url = "github:cachix/devenv";
   };
