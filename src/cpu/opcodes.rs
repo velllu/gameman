@@ -34,6 +34,15 @@ impl GameBoy {
     }
 }
 
+impl GameBoy {
+    fn add_r_to_ra(&mut self, register: OneByteRegister) {
+        let register = self.registers.get_r(register);
+        *register = register.wrapping_add(*register);
+
+        self.flags.update_zero_flag(*register);
+    }
+}
+
 // LD functions
 impl GameBoy {
     fn load_r_into_r(&mut self, register_to_be_loaded: OneByteRegister, register: OneByteRegister) {
@@ -198,6 +207,15 @@ impl GameBoy {
             0x1B => { self.registers.increment_de(1, Operator::Sub); (1, 2) }
             0x2B => { self.registers.increment_hl(1, Operator::Sub); (1, 2) }
             0x3B => { self.registers.sp = self.registers.sp.wrapping_sub(1); (1, 2) },
+
+            // Add R to Ra
+            0x80 => { self.add_r_to_ra(OneByteRegister::B); (1, 1) },
+            0x81 => { self.add_r_to_ra(OneByteRegister::C); (1, 1) },
+            0x82 => { self.add_r_to_ra(OneByteRegister::D); (1, 1) },
+            0x83 => { self.add_r_to_ra(OneByteRegister::E); (1, 1) },
+            0x84 => { self.add_r_to_ra(OneByteRegister::H); (1, 1) },
+            0x85 => { self.add_r_to_ra(OneByteRegister::L); (1, 1) },
+            0x87 => { self.add_r_to_ra(OneByteRegister::A); (1, 1) },
 
             // Load R into R
             0x40 => { self.load_r_into_r(OneByteRegister::B, OneByteRegister::B); (1, 1) },
