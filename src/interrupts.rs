@@ -1,5 +1,3 @@
-use bitvec::prelude::*;
-
 use crate::{common::split_u16_into_two_u8s, GameBoy};
 
 struct Interrupts {
@@ -12,14 +10,12 @@ struct Interrupts {
 
 impl From<u8> for Interrupts {
     fn from(value: u8) -> Self {
-        let bits = value.view_bits::<Msb0>();
-
         Self {
-            vblank: bits[0],
-            lcd: bits[1],
-            timer: bits[2],
-            serial: bits[3],
-            joypad: bits[4],
+            vblank: (value & 0b00001) != 0,
+            lcd: (value & 0b00010) != 0,
+            timer: (value & 0b00100) != 0,
+            serial: (value & 0b01000) != 0,
+            joypad: (value & 0b10000) != 0,
         }
     }
 }
