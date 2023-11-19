@@ -2,3 +2,7 @@
 name = "emulator"
 version = "0.1.0"
 edition = "2021"
+
+# Stuff used for the examples
+[dev-dependencies]
+colored = "2.0.4"

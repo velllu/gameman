@@ -35,18 +35,6 @@ impl Default for Registers {
     }
 }
 
-impl Debug for Registers {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        writeln!(
-            f,
-            "A: {:x} B: {:x} C: {:x} D: {:x}\n\
-            E: {:x} H: {:x} L: {:x}\n\
-            SP: {:x} PC: {:x}",
-            self.a, self.b, self.c, self.d, self.e, self.h, self.l, self.sp, self.pc
-        )
-    }
-}
-
 pub(crate) enum OneByteRegister {
     A,
     B,
