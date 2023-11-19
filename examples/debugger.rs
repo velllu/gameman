@@ -36,6 +36,8 @@ fn pretty_print_gameboy(gameboy: &GameBoy) -> Result<(), io::Error> {
     let stdout = std::io::stdout();
     let mut lock = stdout.lock();
 
+    writeln!(lock, "")?;
+
     writeln!(lock, "{}", "Registers".bold().red())?;
     writeln!(
         lock,
@@ -59,12 +61,24 @@ fn pretty_print_gameboy(gameboy: &GameBoy) -> Result<(), io::Error> {
         bool_to_symbol(gameboy.flags.ime),
     )?;
 
+    writeln!(lock, "{}", "Others".bold().red())?;
+
+    writeln!(
+        lock,
+        "  First byte of immediate data: {}",
+        hex_to_string(gameboy.bus.read_from_rom(gameboy.registers.pc + 1))
+    )?;
+
+    writeln!(
+        lock,
+        "  Second byte of immediate data: {}",
+        hex_to_string(gameboy.bus.read_from_rom(gameboy.registers.pc + 2))
+    )?;
+
     if let Some(opcode) = gameboy.current_opcode {
-        writeln!(lock, "{}", "Others".bold().red())?;
         writeln!(lock, "  Current opcode: {}", hex_to_string(opcode))?;
     }
 
-    writeln!(lock, "")?;
     Ok(())
 }
 
