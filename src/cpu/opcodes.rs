@@ -18,6 +18,7 @@ use super::{Bytes, Cycles};
 // rr -> two byte register
 // ii -> the two bytes of immediate data
 // i -> the first byte of immediate data
+// ram -> a byte from ram
 
 // INC/DEC function
 impl GameBoy {

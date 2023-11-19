@@ -20,16 +20,21 @@ pub(crate) enum BitwiseOperation {
     Xor,
 }
 
-/// Get a specific bit from a `u8`
-/// # Examples
-/// ```
-/// use emulator::common::get_bit;
-///
-/// let x: u8 = 0b0010_0000;
-/// assert_eq!(true, get_bit(0b0010_0000, 5));
-/// assert_eq!(true, get_bit(0b0000_0001, 0));
-/// assert_eq!(false, get_bit(0b0000_0001, 6));
-/// ```
-pub fn get_bit(value: u8, offset: u8) -> bool {
-    (value >> offset) & 0b00000001 == 1
+pub(crate) trait Bit {
+    fn get_bit(&self, offset: Self) -> bool;
+    fn set_bit(&mut self, offset: Self, value: bool);
+}
+
+impl Bit for u8 {
+    fn get_bit(&self, offset: u8) -> bool {
+        (self >> offset) & 0b00000001 != 0
+    }
+
+    fn set_bit(&mut self, offset: u8, value: bool) {
+        if value {
+            *self |= 1 << offset;
+        } else {
+            *self &= !(1 << offset);
+        }
+    }
 }

@@ -119,4 +119,28 @@ mod cpu {
         assert_eq!(0x0022, gb.registers.sp);
         assert_eq!(0x0000, gb.registers.pc);
     }
+
+    mod common {
+        use crate::common::Bit;
+
+        #[test]
+        fn get_bit() {
+            assert!(0b0000_1000_u8.get_bit(3));
+            assert!(0b1000_0000_u8.get_bit(7));
+        }
+
+        #[test]
+        fn set_bit() {
+            let mut blank_int: u8 = 0b0000_0000;
+
+            blank_int.set_bit(3, true);
+            assert_eq!(blank_int, 0b0000_1000);
+
+            blank_int.set_bit(7, true);
+            assert_eq!(blank_int, 0b1000_1000);
+
+            blank_int.set_bit(3, false);
+            assert_eq!(blank_int, 0b1000_0000);
+        }
+    }
 }
