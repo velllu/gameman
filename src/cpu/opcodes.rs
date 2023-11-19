@@ -119,7 +119,10 @@ impl GameBoy {
 // Call functions
 impl GameBoy {
     fn call(&mut self) {
-        let (p, c) = split_u16_into_two_u8s(self.registers.pc);
+        // We need to add 3 to the PC because the `call` instruction uses the PC of the
+        // next instruction, a `call` instruction is 3 bytes long so we need to skip
+        // 3 bytes. Please do not ask how much this took me to debug.
+        let (p, c) = split_u16_into_two_u8s(self.registers.pc + 3);
 
         self.registers.sp = self.registers.sp.wrapping_sub(1);
         self.bus[self.registers.sp] = c;
