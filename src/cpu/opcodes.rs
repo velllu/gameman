@@ -5,21 +5,6 @@ use crate::GameBoy;
 
 use super::{Bytes, Cycles};
 
-// My preferred opcode reference is: https://meganesu.github.io/generate-gb-opcodes/
-
-// You might be wondering why I did not use rust enums to represent all opcodes,
-// I originally did that, and it transforms into spaghetti code really quick, and this is
-// far more readable in my opinion, both to rust users, and to anyone that doesn't know
-// anything about rust
-
-// NAMING CONVENTIONS:
-// r -> one byte register
-// ra -> register a in particular
-// rr -> two byte register
-// ii -> the two bytes of immediate data
-// i -> the first byte of immediate data
-// ram -> a byte from ram
-
 // INC/DEC function
 impl GameBoy {
     fn increment_r(&mut self, register: OneByteRegister, operator: Operator, amount: u8) {
