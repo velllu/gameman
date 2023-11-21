@@ -6,6 +6,8 @@ pub(crate) mod bus {
     pub(crate) const ROM_SIZE: usize = 32768;
     pub(crate) const VIDEO_RAM_SIZE: usize = 8192;
     pub(crate) const WORK_RAM_SIZE: usize = 8192;
+    pub(crate) const EXTERNAL_RAM_SIZE: usize = 8192;
+    pub(crate) const UNUSABLE_RAM_SIZE: usize = 96;
 }
 
 pub(crate) mod gpu {

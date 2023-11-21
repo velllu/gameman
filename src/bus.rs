@@ -12,6 +12,7 @@ use crate::{consts::bus::*, errors::EmuError};
 #[allow(unused)]
 pub struct Bus {
     eom: [u8; EOM_SIZE],
+    external_ram: [u8; EXTERNAL_RAM_SIZE],
     high_ram: [u8; HIGH_RAM_SIZE],
     ie: u8,
     io: [u8; IO_SIZE],
@@ -19,10 +20,13 @@ pub struct Bus {
     video_ram: [u8; VIDEO_RAM_SIZE],
     work_ram: [u8; WORK_RAM_SIZE],
 
-    /// This is just a number that is never used.
-    /// It's useful when I want the program to not crash when it writes/reads something
-    /// it shouldn't
-    burner_value: u8,
+    /// TODO: This is not accurate to the gameboy, when a game writes to a ROM address,
+    /// it should send commands to the cartridge, however, as of now, I just have a clone
+    /// of the ROM stored here, it acts like normal RAM.
+    rom_clone: [u8; ROM_SIZE],
+
+    /// TODO: This should actually not be usuable
+    unusable_ram: [u8; UNUSABLE_RAM_SIZE],
 }
 
 #[rustfmt::skip]
@@ -61,26 +65,30 @@ impl Bus {
         // Actual returning
         Ok(Self {
             eom: [0u8; EOM_SIZE],
+            external_ram: [0u8; EXTERNAL_RAM_SIZE],
             high_ram: [0u8; HIGH_RAM_SIZE],
             ie: 0u8,
             io: new_io(),
             rom,
+            rom_clone: rom,
+            unusable_ram: [0u8; UNUSABLE_RAM_SIZE],
             video_ram: [0u8; VIDEO_RAM_SIZE],
             work_ram: [0u8; WORK_RAM_SIZE],
-            burner_value: 0,
         })
     }
 
     pub(crate) fn new_from_rom_array(rom: [u8; ROM_SIZE]) -> Self {
         Self {
             eom: [0u8; EOM_SIZE],
+            external_ram: [0u8; EXTERNAL_RAM_SIZE],
             high_ram: [0u8; HIGH_RAM_SIZE],
             ie: 0u8,
             io: new_io(),
             rom,
+            rom_clone: rom,
+            unusable_ram: [0u8; UNUSABLE_RAM_SIZE],
             video_ram: [0u8; VIDEO_RAM_SIZE],
             work_ram: [0u8; WORK_RAM_SIZE],
-            burner_value: 0,
         }
     }
 }
@@ -90,15 +98,16 @@ impl core::ops::Index<u16> for Bus {
     type Output = u8;
     fn index(&self, address: u16) -> &Self::Output {
         match address {
+            0x0000..=0x7FFF => &self.rom_clone[address as usize],
             0x8000..=0x9FFF => &self.video_ram[(address - 0x8000) as usize],
-            0xA000..=0xBFFF => todo!(), // external ram
+            0xA000..=0xBFFF => &self.external_ram[(address - 0xA000) as usize],
             0xC000..=0xDFFF => &self.work_ram[(address - 0xC000) as usize],
-            0xE000..=0xFDFF => todo!(), // mirror ram
+            0xE000..=0xFDFF => &self.work_ram[(address - 0xE000) as usize],
             0xFE00..=0xFE9F => &self.eom[(address - 0xFE00) as usize],
+            0xFEA0..=0xFEFF => &self.unusable_ram[(address - 0xFEA0) as usize],
             0xFF00..=0xFF7F => &self.io[(address - IO_START as u16) as usize],
             0xFF80..=0xFFFE => &self.high_ram[(address - 0xFF80) as usize],
             0xFFFF => &self.ie,
-            _ => &self.burner_value,
         }
     }
 }
@@ -107,15 +116,16 @@ impl core::ops::Index<u16> for Bus {
 impl core::ops::IndexMut<u16> for Bus {
     fn index_mut(&mut self, address: u16) -> &mut Self::Output {
         match address {
+            0x0000..=0x7FFF => &mut self.rom_clone[address as usize],
             0x8000..=0x9FFF => &mut self.video_ram[(address - 0x8000) as usize],
-            0xA000..=0xBFFF => todo!(), // external ram
+            0xA000..=0xBFFF => &mut self.external_ram[(address - 0xA000) as usize],
             0xC000..=0xDFFF => &mut self.work_ram[(address - 0xC000) as usize],
-            0xE000..=0xFDFF => todo!(), // mirror ram
+            0xE000..=0xFDFF => &mut self.work_ram[(address - 0xE000) as usize],
             0xFE00..=0xFE9F => &mut self.eom[(address - 0xFE00) as usize],
+            0xFEA0..=0xFEFF => &mut self.unusable_ram[(address - 0xFEA0) as usize],
             0xFF00..=0xFF7F => &mut self.io[(address - IO_START as u16) as usize],
             0xFF80..=0xFFFE => &mut self.high_ram[(address - 0xFF80) as usize],
             0xFFFF => &mut self.ie,
-            _ => &mut self.burner_value,
         }
     }
 }
