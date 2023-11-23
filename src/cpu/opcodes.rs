@@ -138,7 +138,6 @@ impl GameBoy {
         let register = self.registers.get_r(register);
 
         let result = match operation {
-            BitwiseOperation::And => *register & register_a,
             BitwiseOperation::Or => *register | register_a,
             BitwiseOperation::Xor => *register ^ register_a,
         };

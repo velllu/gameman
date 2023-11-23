@@ -1,5 +1,4 @@
 use crate::common::{merge_two_u8s_into_u16, split_u16_into_two_u8s, Operator};
-use std::fmt::Debug;
 
 pub struct Registers {
     pub a: u8,

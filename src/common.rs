@@ -15,7 +15,6 @@ pub(crate) enum Operator {
 }
 
 pub(crate) enum BitwiseOperation {
-    And,
     Or,
     Xor,
 }

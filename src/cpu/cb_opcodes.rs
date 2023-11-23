@@ -1,4 +1,4 @@
-use crate::{common::Bit, registers::OneByteRegister, GameBoy};
+use crate::{common::Bit, GameBoy};
 
 use super::{Bytes, Cycles};
 
