@@ -75,9 +75,11 @@ fn pretty_print_gameboy(gameboy: &GameBoy) -> Result<(), io::Error> {
         hex_to_string(gameboy.bus.read_from_rom(gameboy.registers.pc + 2))
     )?;
 
-    if let Some(opcode) = gameboy.current_opcode {
-        writeln!(lock, "  Current opcode: {}", hex_to_string(opcode))?;
-    }
+    writeln!(
+        lock,
+        "  Current opcode: {}",
+        hex_to_string(gameboy.bus.read_from_rom(gameboy.registers.pc))
+    )?;
 
     Ok(())
 }
@@ -132,10 +134,8 @@ fn main() {
             }
 
             "2" => {
-                if let Some(opcode) = gameboy.current_opcode {
-                    if opcode == additional_input as u8 {
-                        exit(0);
-                    }
+                if gameboy.bus.read_from_rom(gameboy.registers.pc) == additional_input as u8 {
+                    exit(0);
                 }
             }
 

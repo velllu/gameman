@@ -26,9 +26,6 @@ pub struct GameBoy {
     pub registers: Registers,
     pub flags: Flags,
     pub gpu: Gpu,
-
-    /// This is `None` when the `GameBoy.step()` function is never ran
-    pub current_opcode: Option<u8>,
 }
 
 impl GameBoy {
@@ -38,7 +35,6 @@ impl GameBoy {
             registers: Registers::new(),
             flags: Flags::new(),
             gpu: Gpu::new(),
-            current_opcode: None,
         })
     }
 
@@ -48,14 +44,12 @@ impl GameBoy {
             registers: Registers::new(),
             flags: Flags::new(),
             gpu: Gpu::new(),
-            current_opcode: None,
         }
     }
 
     /// Parse and run the next opcode
     pub fn step(&mut self) {
         let opcode = self.next(0);
-        self.current_opcode = Some(opcode);
 
         // CPU - Opcodes
         let (bytes, cycles) = self.interpret_opcode(opcode);
