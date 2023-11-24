@@ -325,13 +325,13 @@ impl GameBoy {
             0x6E => { self.load_ram_into_r(self.registers.get_hl(), OneByteRegister::L); (1, 2) },
             0x7E => { self.load_ram_into_r(self.registers.get_hl(), OneByteRegister::A); (1, 2) },
             0x2A => {
-                self.load_ram_into_r(self.registers.get_hl(), OneByteRegister::A);
-                self.increment_r(OneByteRegister::A, Operator::Inc, 1);
+                self.registers.a = self.bus[self.registers.get_hl()];
+                self.registers.increment_hl(1, Operator::Inc);
                 (1, 2)
             },
             0x3A => {
-                self.load_ram_into_r(self.registers.get_hl(), OneByteRegister::A);
-                self.increment_r(OneByteRegister::A, Operator::Sub, 1);
+                self.registers.a = self.bus[self.registers.get_hl()];
+                self.registers.increment_hl(1, Operator::Sub);
                 (1, 2)
             },
 
