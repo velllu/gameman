@@ -5,7 +5,7 @@ use common::merge_two_u8s_into_u16;
 use consts::bus::ROM_SIZE;
 use errors::EmuError;
 use flags::Flags;
-use gpu::Gpu;
+use gpu::states::Gpu;
 use registers::Registers;
 
 mod bus;
@@ -14,7 +14,7 @@ mod consts;
 mod cpu;
 mod errors;
 mod flags;
-mod gpu;
+pub mod gpu;
 mod interrupts;
 mod registers;
 
