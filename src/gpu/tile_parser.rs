@@ -22,7 +22,7 @@ impl Tile {
 
     /// # Description
     /// To draw a line we need two numbers, here's an example:
-    /// ```no_run
+    /// ```no_rust
     /// 0   1   1   1   1   0   1   0  +
     /// 1   0   1   1   1   1   1   0  =
     /// 10  01  11  11  11  10  11  00

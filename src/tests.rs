@@ -63,7 +63,7 @@ mod cpu {
         let mut gb = create_gb_from_opcode(0xAC);
         gb.step();
 
-        assert_eq!(0, gb.registers.h);
+        assert_eq!(0, gb.registers.a);
     }
 
     #[test]
