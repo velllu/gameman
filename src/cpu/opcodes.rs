@@ -104,7 +104,7 @@ impl GameBoy {
 
 // Call functions
 impl GameBoy {
-    fn call(&mut self) {
+    pub(crate) fn call(&mut self, location: u16) {
         // We need to add 3 to the PC because the `call` instruction uses the PC of the
         // next instruction, a `call` instruction is 3 bytes long so we need to skip
         // 3 bytes. Please do not ask how much this took me to debug.
@@ -115,7 +115,7 @@ impl GameBoy {
         self.registers.sp = self.registers.sp.wrapping_sub(1);
         self.bus[self.registers.sp] = p;
 
-        self.registers.pc = self.next_two();
+        self.registers.pc = location;
     }
 }
 
@@ -392,22 +392,22 @@ impl GameBoy {
                 else { (2, 2) }
 
             // Calls
-            0xCD => { self.call(); (0, 6) },
+            0xCD => { self.call(self.next_two()); (0, 6) },
 
             0xC4 =>
-                if !self.flags.zero { self.call(); (0, 6) }
+                if !self.flags.zero { self.call(self.next_two()); (0, 6) }
                 else { (3, 3) }
 
             0xCC =>
-                if self.flags.zero { self.call(); (0, 6) }
+                if self.flags.zero { self.call(self.next_two()); (0, 6) }
                 else { (3, 3) }
 
             0xD4 =>
-                if !self.flags.carry { self.call(); (0, 6) }
+                if !self.flags.carry { self.call(self.next_two()); (0, 6) }
                 else { (3, 3) }
 
             0xDC =>
-                if self.flags.carry { self.call(); (0, 6) }
+                if self.flags.carry { self.call(self.next_two()); (0, 6) }
                 else { (3, 3) }
 
             // RET

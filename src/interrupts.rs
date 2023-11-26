@@ -1,4 +1,4 @@
-use crate::{common::split_u16_into_two_u8s, GameBoy};
+use crate::{common::Bit, GameBoy};
 
 struct Interrupts {
     vblank: bool,
@@ -11,11 +11,11 @@ struct Interrupts {
 impl From<u8> for Interrupts {
     fn from(value: u8) -> Self {
         Self {
-            vblank: (value & 0b00001) != 0,
-            lcd: (value & 0b00010) != 0,
-            timer: (value & 0b00100) != 0,
-            serial: (value & 0b01000) != 0,
-            joypad: (value & 0b10000) != 0,
+            vblank: value.get_bit(0),
+            lcd: value.get_bit(1),
+            timer: value.get_bit(2),
+            serial: value.get_bit(3),
+            joypad: value.get_bit(4),
         }
     }
 }
@@ -24,28 +24,17 @@ impl From<Interrupts> for u8 {
     fn from(value: Interrupts) -> Self {
         let mut result: u8 = 0;
 
-        result |= value.vblank as u8;
-        result |= (value.lcd as u8) << 1;
-        result |= (value.timer as u8) << 2;
-        result |= (value.serial as u8) << 3;
-        result |= (value.joypad as u8) << 4;
+        result.set_bit(0, value.vblank);
+        result.set_bit(1, value.lcd);
+        result.set_bit(2, value.timer);
+        result.set_bit(3, value.serial);
+        result.set_bit(4, value.joypad);
 
         result
     }
 }
 
 impl GameBoy {
-    fn interrupt(&mut self, pc_location: u16) {
-        let (p, c) = split_u16_into_two_u8s(self.registers.pc);
-
-        self.registers.sp = self.registers.sp.wrapping_sub(1);
-        self.bus[self.registers.sp] = p;
-        self.registers.sp = self.registers.sp.wrapping_sub(1);
-        self.bus[self.registers.sp] = c;
-
-        self.registers.pc = pc_location;
-    }
-
     pub(crate) fn execute_interrupts(&mut self) {
         if !self.flags.ime {
             return;
@@ -56,7 +45,7 @@ impl GameBoy {
 
         // TODO: Make code DRYer
         if is_enabled.vblank && value.vblank {
-            self.interrupt(0x40);
+            self.call(0x40);
 
             value.vblank = false;
             self.bus[0xFF0F] = value.into();
