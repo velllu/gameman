@@ -448,7 +448,8 @@ impl GameBoy {
             0xB7 => { self.bitwise_operation_r(OneByteRegister::A, Bitwise::Or); (1, 1) },
 
             // Interrupt stuff
-            0xF3 => { self.flags.ime = true; (1, 1) },
+            0xF3 => { self.flags.ime = false; (1, 1) },
+            0xFB => { self.flags.ime = true; (1, 1) },
 
             _ => panic!("Opcode {:x} not implemented yet", opcode),
         }
