@@ -157,13 +157,6 @@ impl GameBoy {
         // - They are harder to debug, and harder to read for rust beginners
 
         match opcode {
-            // Misc
-            0x00 => (1, 1), // NOP, does nothing
-            0xCB => {
-                self.registers.pc = self.registers.pc.wrapping_add(1);
-                self.interpret_cb_opcode(self.next(0))
-            },
-
             // Increment R
             0x04 => { self.increment_r(OneByteRegister::B, Operator::Inc, 1); (1, 1) },
             0x0C => { self.increment_r(OneByteRegister::C, Operator::Inc, 1); (1, 1) },
@@ -446,6 +439,14 @@ impl GameBoy {
             0xB4 => { self.bitwise_operation_r(OneByteRegister::H, Bitwise::Or); (1, 1) },
             0xB5 => { self.bitwise_operation_r(OneByteRegister::L, Bitwise::Or); (1, 1) },
             0xB7 => { self.bitwise_operation_r(OneByteRegister::A, Bitwise::Or); (1, 1) },
+
+            // Misc
+            0x00 => (1, 1), // NOP, does nothing
+            0x76 => { (0, 1) }, // TODO: Actually implement this properly
+            0xCB => {
+                self.registers.pc = self.registers.pc.wrapping_add(1);
+                self.interpret_cb_opcode(self.next(0))
+            },
 
             // Interrupt stuff
             0xF3 => { self.flags.ime = false; (1, 1) },
