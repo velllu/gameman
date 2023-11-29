@@ -1,46 +1,25 @@
 {
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-23.05";
-    fenix.url = "github:nix-community/fenix";
-    systems.url = "github:nix-systems/default";
-    devenv.url = "github:cachix/devenv";
+    naersk.url = "github:nix-community/naersk/master";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
+    utils.url = "github:numtide/flake-utils";
   };
 
-  nixConfig = {
-    extra-trusted-public-keys = "devenv.cachix.org-1:w1cLUi8dv3hnoSPGAuibQv+f9TZLr6cv/Hm9XgU50cw=";
-    extra-substituters = "https://devenv.cachix.org";
-  };
+  outputs = { self, nixpkgs, utils, naersk }:
+    utils.lib.eachDefaultSystem (system:
+      let
+        pkgs = import nixpkgs { inherit system; };
+        naersk-lib = pkgs.callPackage naersk { };
+      in
+      {
+        defaultPackage = naersk-lib.buildPackage ./.;
+        devShell = with pkgs; mkShell {
+          buildInputs = [
+            cargo rustc rustfmt pre-commit rust-analyzer rustPackages.clippy
+            raylib
+          ];
 
-  outputs = { self, nixpkgs, devenv, systems, ... } @ inputs:
-    let
-      forEachSystem = nixpkgs.lib.genAttrs (import systems);
-    in
-    {
-      devShells = forEachSystem
-        (system:
-          let
-            pkgs = nixpkgs.legacyPackages.${system};
-          in
-          {
-            default = devenv.lib.mkShell {
-              inherit inputs pkgs;
-              modules = [
-                {
-                  languages.rust = {
-                    enable = true;
-                    channel = "stable";
-
-                    components = [ "rustc" "cargo" "clippy" "rustfmt" "rust-analyzer" ];
-                  };
-
-                  pre-commit.hooks = {
-                    rustfmt.enable = true;
-                    clippy.enable = true;
-                  };
-                }
-              ];
-            };
-          });
-    };
+          RUST_SRC_PATH = rustPlatform.rustLibSrc;
+        };
+      });
 }
-
