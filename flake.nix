@@ -16,7 +16,13 @@
         devShell = with pkgs; mkShell {
           buildInputs = [
             cargo rustc rustfmt pre-commit rust-analyzer rustPackages.clippy
-            raylib
+            libxkbcommon libGL wayland xorg.libXcursor xorg.libXrandr xorg.libXi xorg.libX11
+          ];
+
+          LD_LIBRARY_PATH = builtins.concatStringsSep ":" [
+            "${pkgs.xorg.libX11}/lib"
+            "${pkgs.xorg.libXi}/lib"
+            "${pkgs.libGL}/lib"
           ];
 
           RUST_SRC_PATH = rustPlatform.rustLibSrc;
