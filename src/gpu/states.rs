@@ -1,10 +1,13 @@
 use crate::{
+    common::Bit,
     consts::{
         display::{DISPLAY_SIZE_X, DISPLAY_SIZE_Y},
-        gpu::LY,
+        gpu::{LY, SCX, SCY},
     },
     GameBoy,
 };
+
+use super::Color;
 
 #[derive(PartialEq)]
 pub enum GPUState {
@@ -18,10 +21,12 @@ pub struct Gpu {
     pub state: GPUState,
 
     /// This keeps track of the pixel outputted in the current scanline
-    already_outputted_pixel: u32,
+    already_outputted_pixel: u16,
 
     /// A tick is 1/4 of a CPU cycle
     ticks: u32,
+
+    pub screen: [[Color; DISPLAY_SIZE_X]; DISPLAY_SIZE_Y],
 }
 
 impl Gpu {
@@ -30,6 +35,7 @@ impl Gpu {
             state: GPUState::OAMSearch,
             already_outputted_pixel: 0,
             ticks: 0,
+            screen: [[Color::Light; DISPLAY_SIZE_X]; DISPLAY_SIZE_Y],
         }
     }
 }
@@ -50,10 +56,42 @@ impl GameBoy {
     }
 
     fn pixel_transfer(&mut self) {
-        // TODO: Document and implement this
+        let tile_map_address: u16 = match self.bus[0xFF40].get_bit(3) {
+            false => 0x9800,
+            true => 0x9C00,
+        };
 
-        self.gpu.already_outputted_pixel += 1;
-        if self.gpu.already_outputted_pixel == DISPLAY_SIZE_X as u32 {
+        let mut i = 0;
+
+        // Y Scrolling
+        // The gameboy tilemap is 32x32 tiles, both `SCX` and `SCY` use pixels, not tiles
+        // so we have to divide them by 8, skipping 32 tiles just means to set the
+        // "cursor" on the line below
+        for _ in 0..(self.bus[SCY] / 8) {
+            i += 32;
+        }
+
+        for y in 0..18 {
+            for x in 0..20 {
+                // X Scrolling
+                // We add the number of tiles to skip to the adress
+                self.draw_tile(
+                    self.bus[tile_map_address + i + (self.bus[SCX] as u16 / 8)],
+                    y * 8,
+                    x * 8,
+                );
+
+                i += 1;
+            }
+
+            // 12 is the number to skip to go from the end of the viewport, skip the
+            // the tiles that don't need to be rendered, and end up at the next line of
+            // the viewport (32 - 20)
+            i += 12;
+        }
+
+        self.gpu.already_outputted_pixel += 8;
+        if self.gpu.already_outputted_pixel == DISPLAY_SIZE_X as u16 {
             self.gpu.state = GPUState::HBlank;
         }
     }

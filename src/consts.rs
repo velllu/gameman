@@ -12,6 +12,9 @@ pub(crate) mod bus {
 
 pub(crate) mod gpu {
     pub(crate) const LY: u16 = 0xFF44;
+    pub(crate) const SCY: u16 = 0xFF42;
+    pub(crate) const SCX: u16 = 0xFF43;
+    pub(crate) const LCDC: u16 = 0xFF40;
 }
 
 pub(crate) mod display {

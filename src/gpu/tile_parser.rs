@@ -1,6 +1,6 @@
 use crate::{common::Bit, consts::gpu::LCDC, GameBoy};
 
-use super::{states::Gpu, Color};
+use super::Color;
 
 pub struct Tile {
     pub colors: [[Color; 8]; 8],
@@ -48,8 +48,13 @@ impl Tile {
 }
 
 impl GameBoy {
-    pub(crate) fn draw_tile(&mut self, tile_number: u8) {
+    pub(crate) fn draw_tile(&mut self, tile_number: u8, x_offset: usize, y_offset: usize) {
         let mut tile = Tile::new_blank();
+
+        // When the gameboy converts from u8 to u16, in this case, it adds 0s on the
+        // right instead of the left, so `0xF8` becomes `0xF800` instead of `0x00F8` as
+        // one might expect
+        let tile_number: u16 = (tile_number as u16) << 4;
 
         let tile_data_address: u16 = match self.bus[LCDC].get_bit(4) {
             false => 0x8800,
@@ -57,15 +62,15 @@ impl GameBoy {
         };
 
         for i in (0..16).step_by(2) {
-            let low = self.bus[tile_data_address + tile_number as u16 + i];
-            let high = self.bus[tile_data_address + tile_number as u16 + i + 1];
+            let low = self.bus[tile_data_address + tile_number + i];
+            let high = self.bus[tile_data_address + tile_number + i + 1];
 
-            tile.draw_line(low, high, (i / 2) as usize);
+            tile.draw_line(high, low, (i / 2) as usize);
         }
 
-        for (y_coordinate, y) in tile.colors.iter().enumerate() {
-            for (x_coordinate, x) in y.iter().enumerate() {
-                self.gpu.screen[x_coordinate][y_coordinate] = *x;
+        for (x_coordinate, x) in tile.colors.iter().enumerate() {
+            for (y_coordinate, y) in x.iter().enumerate() {
+                self.gpu.screen[x_coordinate + x_offset][y_coordinate + y_offset] = *y;
             }
         }
     }
