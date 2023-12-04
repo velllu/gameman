@@ -19,23 +19,28 @@ pub enum GPUState {
 
 pub struct Gpu {
     pub state: GPUState,
+    pub screen: [[Color; DISPLAY_SIZE_X]; DISPLAY_SIZE_Y],
 
-    /// This keeps track of the pixel outputted in the current scanline
-    already_outputted_pixel: u16,
+    // These represent the current position of the "cursor"
+    x: u8,
+    y: u8,
+
+    /// This is the offset to add to the tile map address
+    i: u16,
 
     /// A tick is 1/4 of a CPU cycle
     ticks: u32,
-
-    pub screen: [[Color; DISPLAY_SIZE_X]; DISPLAY_SIZE_Y],
 }
 
 impl Gpu {
     pub(crate) fn new() -> Self {
         Self {
             state: GPUState::OAMSearch,
-            already_outputted_pixel: 0,
-            ticks: 0,
             screen: [[Color::Light; DISPLAY_SIZE_X]; DISPLAY_SIZE_Y],
+            x: 0,
+            y: 0,
+            i: 0,
+            ticks: 0,
         }
     }
 }
@@ -56,42 +61,44 @@ impl GameBoy {
     }
 
     fn pixel_transfer(&mut self) {
-        let tile_map_address: u16 = match self.bus[0xFF40].get_bit(3) {
+        let mut tile_map_address: u16 = match self.bus[0xFF40].get_bit(3) {
             false => 0x9800,
             true => 0x9C00,
         };
-
-        let mut i = 0;
 
         // Y Scrolling
         // The gameboy tilemap is 32x32 tiles, both `SCX` and `SCY` use pixels, not tiles
         // so we have to divide them by 8, skipping 32 tiles just means to set the
         // "cursor" on the line below
         for _ in 0..(self.bus[SCY] / 8) {
-            i += 32;
+            tile_map_address += 32;
         }
 
-        for y in 0..18 {
-            for x in 0..20 {
-                // X Scrolling
-                // We add the number of tiles to skip to the adress
-                self.draw_tile(
-                    self.bus[tile_map_address + i + (self.bus[SCX] as u16 / 8)],
-                    y * 8,
-                    x * 8,
-                );
+        // X Scrolling
+        // We add the number of tiles to skip to the adress
+        tile_map_address += self.bus[SCX] as u16 / 8;
 
-                i += 1;
+        // Adding i
+        tile_map_address += self.gpu.i;
+
+        let background_fifo = self.get_line(self.bus[tile_map_address], self.gpu.y as u16 % 8);
+        self.draw_line(&background_fifo, self.gpu.x as usize, self.gpu.y as usize);
+
+        self.gpu.i += 1;
+        self.gpu.x += 8;
+
+        if self.gpu.x == (DISPLAY_SIZE_X as u8) {
+            // If we finished rendering all the 20 tiles, and we want to go to the next
+            // set of tile, we skip 12, because the tile map is 32x32, and the viewport
+            // is 20x18 (32 - 20), and if we haven't rendered the 20 tiles, we go back
+            // to the first one
+            if self.gpu.y % 8 == 7 {
+                self.gpu.i += 12;
+            } else {
+                self.gpu.i -= 20;
             }
 
-            // 12 is the number to skip to go from the end of the viewport, skip the
-            // the tiles that don't need to be rendered, and end up at the next line of
-            // the viewport (32 - 20)
-            i += 12;
-        }
-
-        self.gpu.already_outputted_pixel += 8;
-        if self.gpu.already_outputted_pixel == DISPLAY_SIZE_X as u16 {
+            self.gpu.y += 1;
             self.gpu.state = GPUState::HBlank;
         }
     }
@@ -105,7 +112,7 @@ impl GameBoy {
         }
 
         self.gpu.ticks = 0;
-        self.gpu.already_outputted_pixel = 0;
+        self.gpu.x = 0;
         self.bus[LY] = self.bus[LY].wrapping_add(1);
 
         self.gpu.state = if self.bus[LY] == DISPLAY_SIZE_Y as u8 {
@@ -128,6 +135,8 @@ impl GameBoy {
 
         if self.bus[LY] == 153 {
             self.bus[LY] = 0;
+            self.gpu.y = 0;
+            self.gpu.i = 0;
             self.gpu.state = GPUState::OAMSearch;
         }
     }
