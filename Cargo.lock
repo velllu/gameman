@@ -89,14 +89,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "emulator"
-version = "0.1.0"
-dependencies = [
- "colored",
- "macroquad",
-]
-
-[[package]]
 name = "errno"
 version = "0.3.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -133,6 +125,14 @@ checksum = "0793f5137567643cf65ea42043a538804ff0fbf288649e2141442b602d81f9bc"
 dependencies = [
  "hashbrown",
  "ttf-parser",
+]
+
+[[package]]
+name = "gameman"
+version = "0.1.0"
+dependencies = [
+ "colored",
+ "macroquad",
 ]
 
 [[package]]

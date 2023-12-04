@@ -5,7 +5,7 @@ use std::{
     process::exit,
 };
 
-use emulator::GameBoy;
+use gameman::GameBoy;
 
 fn ask_input(text: &str) -> String {
     let mut input = String::new();

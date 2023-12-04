@@ -3,7 +3,7 @@ use std::{
     thread,
 };
 
-use emulator::{gpu::Color, GameBoy};
+use gameman::{gpu::Color, GameBoy};
 use macroquad::{
     color::{Color as MacroColor, WHITE},
     math::vec2,
