@@ -1,3 +1,4 @@
+pub(crate) mod oam_parser;
 pub(crate) mod states;
 pub mod tile_parser;
 
