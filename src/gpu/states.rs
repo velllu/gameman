@@ -7,7 +7,7 @@ use crate::{
     GameBoy,
 };
 
-use super::Color;
+use super::{oam_parser::SpriteData, tile_parser::Line, Color};
 
 #[derive(PartialEq)]
 pub enum GPUState {
@@ -20,6 +20,8 @@ pub enum GPUState {
 pub struct Gpu {
     pub state: GPUState,
     pub screen: [[Color; DISPLAY_SIZE_X]; DISPLAY_SIZE_Y],
+
+    sprites: Vec<SpriteData>,
 
     // These represent the current position of the "cursor"
     x: u8,
@@ -37,6 +39,7 @@ impl Gpu {
         Self {
             state: GPUState::OAMSearch,
             screen: [[Color::Light; DISPLAY_SIZE_X]; DISPLAY_SIZE_Y],
+            sprites: Vec::new(),
             x: 0,
             y: 0,
             i: 0,
@@ -53,7 +56,10 @@ impl GameBoy {
     /// The OAM Search phase is where we search for the visible sprites in the current
     /// scanline in the OAM region of the RAM
     fn oam_search(&mut self) {
-        // TODO: Actually implement the sprite searching
+        self.gpu.sprites.clear();
+        for i in (0xFE00..0xFE9C).step_by(4) {
+            self.gpu.sprites.push(self.get_sprite_data(i));
+        }
 
         if self.gpu.ticks == 40 {
             self.gpu.state = GPUState::PixelTransfer;
@@ -82,7 +88,19 @@ impl GameBoy {
         tile_map_address += self.gpu.i;
 
         let background_fifo = self.get_line(self.bus[tile_map_address], self.gpu.y as u16 % 8);
+
+        // Now that we have the background line to render, we have to get the sprite one
+        let mut sprite_fifo: Option<Line> = None;
+        for sprite in &self.gpu.sprites {
+            if sprite.x == self.gpu.x {
+                sprite_fifo = Some(self.get_line(sprite.tile_number, self.gpu.y as u16 % 8));
+            }
+        }
+
         self.draw_line(&background_fifo, self.gpu.x as usize, self.gpu.y as usize);
+        if let Some(sprite_fifo) = sprite_fifo {
+            self.draw_line(&sprite_fifo, self.gpu.x as usize, self.gpu.y as usize);
+        }
 
         self.gpu.i += 1;
         self.gpu.x += 8;

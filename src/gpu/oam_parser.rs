@@ -11,15 +11,15 @@ pub(crate) enum Palette {
 }
 
 pub(crate) struct SpriteData {
-    y: u8,
-    x: u8,
-    tile_number: u8,
+    pub(crate) y: u8,
+    pub(crate) x: u8,
+    pub(crate) tile_number: u8,
 
     // Flags
-    priority: Priority,
-    palette: Palette,
-    x_flip: bool,
-    y_flip: bool,
+    pub(crate) priority: Priority,
+    pub(crate) palette: Palette,
+    pub(crate) x_flip: bool,
+    pub(crate) y_flip: bool,
 }
 
 impl GameBoy {
