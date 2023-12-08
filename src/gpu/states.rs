@@ -56,6 +56,9 @@ impl GameBoy {
     /// The OAM Search phase is where we search for the visible sprites in the current
     /// scanline in the OAM region of the RAM
     fn oam_search(&mut self) {
+        // TODO: The timing on this is still to implement, this just checks *all* the
+        // sprites all at once every OAM Search tick, which is both grossly inaccurate
+        // and inefficient
         self.gpu.sprites.clear();
         for i in (0xFE00..0xFE9C).step_by(4) {
             self.gpu.sprites.push(self.get_sprite_data(i));
@@ -92,14 +95,26 @@ impl GameBoy {
         // Now that we have the background line to render, we have to get the sprite one
         let mut sprite_fifo: Option<Line> = None;
         for sprite in &self.gpu.sprites {
-            if sprite.x == self.gpu.x {
+            let sprite_y = sprite.y - 16;
+            let sprite_x = sprite.x - 8;
+
+            // We check if there is any sprite that is on the same x axis as our "cursor"
+            let x_condition = sprite_x == self.gpu.x;
+
+            // and we check if we also are on the same y axis, however, a sprite is 8
+            // pixel long, so we check if we are anywhere between row 0 to 7
+            let y_condition = ((sprite_y)..(sprite_y + 7)).contains(&self.gpu.y);
+
+            if x_condition && y_condition {
                 sprite_fifo = Some(self.get_line(sprite.tile_number, self.gpu.y as u16 % 8));
             }
         }
 
-        self.draw_line(&background_fifo, self.gpu.x as usize, self.gpu.y as usize);
+        // TODO: Implement fifo mixing
         if let Some(sprite_fifo) = sprite_fifo {
             self.draw_line(&sprite_fifo, self.gpu.x as usize, self.gpu.y as usize);
+        } else {
+            self.draw_line(&background_fifo, self.gpu.x as usize, self.gpu.y as usize);
         }
 
         self.gpu.i += 1;
