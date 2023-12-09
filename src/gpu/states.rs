@@ -20,8 +20,7 @@ pub enum GPUState {
 pub struct Gpu {
     pub state: GPUState,
     pub screen: [[Color; DISPLAY_SIZE_X]; DISPLAY_SIZE_Y],
-
-    sprites: Vec<SpriteData>,
+    pub(crate) sprites: Vec<SpriteData>,
 
     // These represent the current position of the "cursor"
     x: u8,
@@ -90,34 +89,9 @@ impl GameBoy {
         // Adding i
         tile_map_address += self.gpu.i;
 
+        // And we get both background/window fifo and the sprite fifo
         let background_fifo = self.get_line(self.bus[tile_map_address], self.gpu.y as u16 % 8);
-
-        // Now that we have the background line to render, we have to get the sprite one
-        let mut sprite_fifo: Option<Line> = None;
-        for sprite in &self.gpu.sprites {
-            if sprite.y < 16 || sprite.x < 8 {
-                continue;
-            }
-
-            let sprite_y = sprite.y - 16;
-            let sprite_x = sprite.x - 8;
-
-            // We check if there is any sprite that is on the same x axis as our "cursor"
-            let x_condition = sprite_x == self.gpu.x;
-
-            // and we check if we also are on the same y axis, however, a sprite is 8
-            // pixel long, so we check if we are anywhere between row 0 to 7
-            let y_condition = ((sprite_y)..(sprite_y + 7)).contains(&self.gpu.y);
-
-            if x_condition && y_condition {
-                sprite_fifo = Some(self.get_line_rotation(
-                    sprite.tile_number,
-                    self.gpu.y as u16 % 8,
-                    sprite.x_flip,
-                    sprite.y_flip,
-                ));
-            }
-        }
+        let sprite_fifo: Option<Line> = self.get_sprite_fifo(self.gpu.x, self.gpu.y);
 
         // TODO: Implement fifo mixing
         if let Some(sprite_fifo) = sprite_fifo {

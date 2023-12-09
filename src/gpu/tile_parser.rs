@@ -14,15 +14,6 @@ impl Line {
         }
     }
 
-    pub(crate) fn invert_colors(&mut self) {
-        self.colors = self.colors.map(|color| match color {
-            Color::Light => Color::Dark,
-            Color::MediumlyLight => Color::MediumlyDark,
-            Color::MediumlyDark => Color::MediumlyLight,
-            Color::Dark => Color::Light,
-        });
-    }
-
     /// # Description
     /// To draw a line we need two numbers, here's an example:
     /// ```no_rust
