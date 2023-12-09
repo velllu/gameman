@@ -95,6 +95,10 @@ impl GameBoy {
         // Now that we have the background line to render, we have to get the sprite one
         let mut sprite_fifo: Option<Line> = None;
         for sprite in &self.gpu.sprites {
+            if sprite.y < 16 || sprite.x < 8 {
+                continue;
+            }
+
             let sprite_y = sprite.y - 16;
             let sprite_x = sprite.x - 8;
 
@@ -106,7 +110,12 @@ impl GameBoy {
             let y_condition = ((sprite_y)..(sprite_y + 7)).contains(&self.gpu.y);
 
             if x_condition && y_condition {
-                sprite_fifo = Some(self.get_line(sprite.tile_number, self.gpu.y as u16 % 8));
+                sprite_fifo = Some(self.get_line_rotation(
+                    sprite.tile_number,
+                    self.gpu.y as u16 % 8,
+                    sprite.x_flip,
+                    sprite.y_flip,
+                ));
             }
         }
 

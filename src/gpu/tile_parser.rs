@@ -14,6 +14,15 @@ impl Line {
         }
     }
 
+    pub(crate) fn invert_colors(&mut self) {
+        self.colors = self.colors.map(|color| match color {
+            Color::Light => Color::Dark,
+            Color::MediumlyLight => Color::MediumlyDark,
+            Color::MediumlyDark => Color::MediumlyLight,
+            Color::Dark => Color::Light,
+        });
+    }
+
     /// # Description
     /// To draw a line we need two numbers, here's an example:
     /// ```no_rust
@@ -66,6 +75,28 @@ impl GameBoy {
 
         tile.draw_line(high, low);
         tile
+    }
+
+    pub(crate) fn get_line_rotation(
+        &self,
+        tile_number: u8,
+        y: u16,
+        x_flip: bool,
+        y_flip: bool,
+    ) -> Line {
+        let mut line = self.get_line(
+            tile_number,
+            match y_flip {
+                false => y,
+                true => 7 - y,
+            },
+        );
+
+        if x_flip {
+            line.colors.reverse();
+        }
+
+        line
     }
 
     pub(crate) fn draw_line(&mut self, line: &Line, x: usize, y: usize) {
