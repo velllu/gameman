@@ -22,6 +22,10 @@ pub struct Gpu {
     pub screen: [[Color; DISPLAY_SIZE_X]; DISPLAY_SIZE_Y],
     pub(crate) sprites: Vec<SpriteData>,
 
+    /// We need to keep track of how many sprites we have rendered because there is a
+    /// maximum of 10 sprites, after that, no more sprites can be rendered on a line
+    rendered_sprites_on_line: u8,
+
     // These represent the current position of the "cursor"
     x: u8,
     y: u8,
@@ -39,6 +43,7 @@ impl Gpu {
             state: GPUState::OAMSearch,
             screen: [[Color::Light; DISPLAY_SIZE_X]; DISPLAY_SIZE_Y],
             sprites: Vec::new(),
+            rendered_sprites_on_line: 0,
             x: 0,
             y: 0,
             i: 0,
@@ -95,7 +100,10 @@ impl GameBoy {
 
         // TODO: Implement fifo mixing
         if let Some(sprite_fifo) = sprite_fifo {
-            self.draw_line(&sprite_fifo, self.gpu.x as usize, self.gpu.y as usize);
+            if self.gpu.rendered_sprites_on_line < 10 {
+                self.draw_line(&sprite_fifo, self.gpu.x as usize, self.gpu.y as usize);
+                self.gpu.rendered_sprites_on_line += 1;
+            }
         } else {
             self.draw_line(&background_fifo, self.gpu.x as usize, self.gpu.y as usize);
         }
@@ -114,6 +122,7 @@ impl GameBoy {
                 self.gpu.i -= 20;
             }
 
+            self.gpu.rendered_sprites_on_line = 0;
             self.gpu.y += 1;
             self.gpu.state = GPUState::HBlank;
         }
