@@ -1,6 +1,6 @@
 use crate::{common::Bit, consts::gpu::LCDC, GameBoy};
 
-use super::Color;
+use super::{palette::bools_to_color, Color};
 
 pub struct Line {
     pub colors: [Color; 8],
@@ -37,12 +37,7 @@ impl Line {
             let num1_bit = num1.get_bit(7 - bit_offset);
             let num2_bit = num2.get_bit(7 - bit_offset);
 
-            self.colors[bit_offset as usize] = match (num1_bit, num2_bit) {
-                (false, false) => Color::Light,
-                (false, true) => Color::MediumlyLight,
-                (true, false) => Color::MediumlyDark,
-                (true, true) => Color::Dark,
-            };
+            self.colors[bit_offset as usize] = bools_to_color(num1_bit, num2_bit);
         }
     }
 }

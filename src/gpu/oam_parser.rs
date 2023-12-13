@@ -8,8 +8,8 @@ pub(crate) enum Priority {
 }
 
 pub(crate) enum Palette {
-    _0BP0,
-    _0BP1,
+    OBP0,
+    OBP1,
 }
 
 pub(crate) struct SpriteData {
@@ -40,16 +40,17 @@ impl GameBoy {
                 true => Priority::AboveLightColor,
             },
             palette: match flags.get_bit(4) {
-                false => Palette::_0BP0,
-                true => Palette::_0BP1,
+                false => Palette::OBP0,
+                true => Palette::OBP1,
             },
             x_flip: flags.get_bit(5),
             y_flip: flags.get_bit(6),
         }
     }
 
-    pub(crate) fn get_sprite_fifo(&self, x: u8, y: u8) -> Option<Line> {
-        let mut sprite_fifo: Option<Line> = None;
+    pub(crate) fn get_sprite_fifo(&self, x: u8, y: u8) -> Option<(Line, &SpriteData)> {
+        let mut sprite_fifo: Option<(Line, &SpriteData)> = None;
+
         for sprite in &self.gpu.sprites {
             if sprite.y < 16 || sprite.x < 8 {
                 continue;
@@ -66,11 +67,14 @@ impl GameBoy {
             let y_condition = ((sprite_y)..(sprite_y + 7)).contains(&y);
 
             if x_condition && y_condition {
-                sprite_fifo = Some(self.get_line_rotation(
-                    sprite.tile_number,
-                    y as u16 % 8,
-                    sprite.x_flip,
-                    sprite.y_flip,
+                sprite_fifo = Some((
+                    self.get_line_rotation(
+                        sprite.tile_number,
+                        y as u16 % 8,
+                        sprite.x_flip,
+                        sprite.y_flip,
+                    ),
+                    sprite,
                 ));
             }
         }
