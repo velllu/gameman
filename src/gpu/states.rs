@@ -98,13 +98,15 @@ impl GameBoy {
         let background_fifo = self.get_line(self.bus[tile_map_address], self.gpu.y as u16 % 8);
         let mut sprite = self.get_sprite_fifo(self.gpu.x, self.gpu.y);
 
-        // TODO: Implement fifo mixing
         if let Some((sprite_fifo, sprite_data)) = &mut sprite {
-            self.apply_palette_to_sprite(sprite_fifo, &sprite_data.palette);
-
             if self.gpu.rendered_sprites_on_line < 10 {
+                self.apply_palette_to_sprite(sprite_fifo, &sprite_data.palette);
+                sprite_fifo.mix_with_background_tile(&background_fifo, &sprite_data.priority);
+
                 self.draw_line(&sprite_fifo, self.gpu.x as usize, self.gpu.y as usize);
                 self.gpu.rendered_sprites_on_line += 1;
+            } else {
+                self.draw_line(&background_fifo, self.gpu.x as usize, self.gpu.y as usize);
             }
         } else {
             self.draw_line(&background_fifo, self.gpu.x as usize, self.gpu.y as usize);

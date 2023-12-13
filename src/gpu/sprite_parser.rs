@@ -1,7 +1,8 @@
 use crate::{common::Bit, GameBoy};
 
-use super::tile_parser::Line;
+use super::{tile_parser::Line, Color};
 
+#[derive(PartialEq, Eq)]
 pub(crate) enum Priority {
     AlwaysAbove,
     AboveLightColor,
@@ -36,8 +37,8 @@ impl GameBoy {
             x,
             tile_number,
             priority: match flags.get_bit(7) {
-                false => Priority::AlwaysAbove,
-                true => Priority::AboveLightColor,
+                false => Priority::AboveLightColor,
+                true => Priority::AlwaysAbove,
             },
             palette: match flags.get_bit(4) {
                 false => Palette::OBP0,
@@ -80,5 +81,19 @@ impl GameBoy {
         }
 
         sprite_fifo
+    }
+}
+
+impl Line {
+    pub(crate) fn mix_with_background_tile(&mut self, background_tile: &Line, priority: &Priority) {
+        if *priority == Priority::AlwaysAbove {
+            return;
+        }
+
+        for (sprite_pixel, bg_pixel) in self.colors.iter_mut().zip(background_tile.colors) {
+            if *sprite_pixel == Color::Light {
+                *sprite_pixel = bg_pixel;
+            }
+        }
     }
 }
