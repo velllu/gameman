@@ -7,7 +7,7 @@ use crate::{
     GameBoy,
 };
 
-use super::{oam_parser::SpriteData, Color};
+use super::{sprite_parser::SpriteData, Color};
 
 #[derive(PartialEq)]
 pub enum GPUState {

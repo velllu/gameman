@@ -4,7 +4,7 @@ use crate::{
     GameBoy,
 };
 
-use super::{oam_parser::Palette, tile_parser::Line, Color};
+use super::{sprite_parser::Palette, tile_parser::Line, Color};
 
 pub(crate) fn bools_to_color(bool1: bool, bool2: bool) -> Color {
     match (bool1, bool2) {
