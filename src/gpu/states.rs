@@ -96,10 +96,10 @@ impl GameBoy {
 
         // And we get both background/window fifo and the sprite fifo
         let background_fifo = self.get_line(self.bus[tile_map_address], self.gpu.y as u16 % 8);
-        let mut sprite_fifo = self.get_sprite_fifo(self.gpu.x, self.gpu.y);
+        let mut sprite = self.get_sprite_fifo(self.gpu.x, self.gpu.y);
 
         // TODO: Implement fifo mixing
-        if let Some((sprite_fifo, sprite_data)) = &mut sprite_fifo {
+        if let Some((sprite_fifo, sprite_data)) = &mut sprite {
             self.apply_palette_to_sprite(sprite_fifo, &sprite_data.palette);
 
             if self.gpu.rendered_sprites_on_line < 10 {

@@ -63,8 +63,8 @@ impl GameBoy {
             let x_condition = sprite_x == x;
 
             // and we check if we also are on the same y axis, however, a sprite is 8
-            // pixel long, so we check if we are anywhere between row 0 to 7
-            let y_condition = ((sprite_y)..(sprite_y + 7)).contains(&y);
+            // pixel long, so we check if we are anywhere between row 1 to 8
+            let y_condition = ((sprite_y)..(sprite_y + 8)).contains(&y);
 
             if x_condition && y_condition {
                 sprite_fifo = Some((
