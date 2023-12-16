@@ -1,9 +1,8 @@
 #![forbid(unsafe_code)]
 
-use bus::Bus;
+use bus::{Bus, BusError};
 use common::merge_two_u8s_into_u16;
 use consts::bus::ROM_SIZE;
-use errors::EmuError;
 use flags::Flags;
 use gpu::states::Gpu;
 use registers::Registers;
@@ -12,7 +11,6 @@ mod bus;
 pub mod common;
 mod consts;
 mod cpu;
-mod errors;
 mod flags;
 pub mod gpu;
 mod interrupts;
@@ -29,7 +27,7 @@ pub struct GameBoy {
 }
 
 impl GameBoy {
-    pub fn new(rom_path: &str) -> Result<Self, EmuError> {
+    pub fn new(rom_path: &str) -> Result<Self, BusError> {
         Ok(Self {
             bus: Bus::new(rom_path)?,
             registers: Registers::new(),

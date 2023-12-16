@@ -1,6 +1,22 @@
-use std::{fs::File, io::Read};
+use std::{error::Error, fmt::Display, fs::File, io::Read};
 
-use crate::{consts::bus::*, errors::EmuError};
+use crate::consts::bus::*;
+
+#[derive(Debug)]
+pub enum BusError {
+    CouldNotFindRom,
+    CouldNotReadRom,
+}
+
+impl Error for BusError {}
+impl Display for BusError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::CouldNotFindRom => write!(f, "could not find rom"),
+            Self::CouldNotReadRom => write!(f, "could not read rom"),
+        }
+    }
+}
 
 /// GameBoy uses mapped memory, this means that there are various "regions" of RAM, and we
 /// need to calculate in what region to put ram, example:
@@ -48,18 +64,18 @@ const fn new_io() -> [u8; IO_SIZE] {
 }
 
 impl Bus {
-    pub(crate) fn new(rom_path: &str) -> Result<Self, EmuError> {
+    pub(crate) fn new(rom_path: &str) -> Result<Self, BusError> {
         // ROM loading
         let mut rom = [0u8; ROM_SIZE];
 
         let mut rom_file = match File::open(rom_path) {
             Ok(rom_file) => rom_file,
-            Err(_) => return Err(EmuError::CouldNotFindRom),
+            Err(_) => return Err(BusError::CouldNotFindRom),
         };
 
         match rom_file.read(&mut rom) {
             Ok(_) => {}
-            Err(_) => return Err(EmuError::CouldNotReadRom),
+            Err(_) => return Err(BusError::CouldNotReadRom),
         }
 
         // Actual returning
