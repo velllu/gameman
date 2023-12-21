@@ -9,7 +9,7 @@ use registers::Registers;
 
 mod bus;
 pub mod common;
-mod consts;
+pub mod consts;
 mod cpu;
 mod flags;
 pub mod gpu;

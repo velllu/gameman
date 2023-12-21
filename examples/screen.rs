@@ -3,7 +3,11 @@ use std::{
     thread,
 };
 
-use gameman::{gpu::Color, GameBoy};
+use gameman::{
+    consts::display::{DISPLAY_SIZE_X, DISPLAY_SIZE_Y},
+    gpu::Color,
+    GameBoy,
+};
 use macroquad::{
     color::{Color as MacroColor, WHITE},
     math::vec2,
@@ -11,9 +15,6 @@ use macroquad::{
     texture::{draw_texture_ex, DrawTextureParams, Image, Texture2D},
     window::{clear_background, next_frame},
 };
-
-const WIDTH: u16 = 160;
-const HEIGHT: u16 = 144;
 
 #[macroquad::main("Main")]
 async fn main() {
@@ -36,7 +37,7 @@ async fn main() {
     let gameboy = Arc::new(Mutex::new(GameBoy::new(&rom_path).unwrap()));
     let gameboy_clone = gameboy.clone();
 
-    let mut image = Image::gen_image_color(WIDTH, HEIGHT, WHITE);
+    let mut image = Image::gen_image_color(DISPLAY_SIZE_X as u16, DISPLAY_SIZE_Y as u16, WHITE);
     let texture = Texture2D::from_image(&image);
     texture.set_filter(FilterMode::Nearest); // without this it will be blurry
 
