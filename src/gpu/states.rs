@@ -2,14 +2,14 @@ use crate::{
     common::Bit,
     consts::{
         display::{DISPLAY_SIZE_X, DISPLAY_SIZE_Y},
-        gpu::{LY, SCX, SCY},
+        gpu::{LCDC, LY, SCX, SCY},
     },
     GameBoy,
 };
 
 use super::{sprite_parser::SpriteData, Color};
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Debug)]
 pub enum GPUState {
     OAMSearch,
     PixelTransfer,
@@ -22,6 +22,11 @@ pub struct Gpu {
     pub screen: [[Color; DISPLAY_SIZE_X]; DISPLAY_SIZE_Y],
     pub(crate) sprites: Vec<SpriteData>,
 
+    /// When the screen is off, the GPU is in a state of hybernation, as soon as this is
+    /// flipped back, the GPU will reset itself. During this state, the screen will be
+    /// blank
+    pub hybernated: bool,
+
     /// We need to keep track of how many sprites we have rendered because there is a
     /// maximum of 10 sprites, after that, no more sprites can be rendered on a line
     rendered_sprites_on_line: u8,
@@ -33,8 +38,8 @@ pub struct Gpu {
     /// This is the offset to add to the tile map address
     i: u16,
 
-    /// A tick is 1/4 of a CPU cycle
-    ticks: u32,
+    /// A dot is 1/4 of a CPU cycle
+    dots: u16,
 }
 
 impl Gpu {
@@ -43,11 +48,12 @@ impl Gpu {
             state: GPUState::OAMSearch,
             screen: [[Color::Light; DISPLAY_SIZE_X]; DISPLAY_SIZE_Y],
             sprites: Vec::new(),
+            hybernated: false,
             rendered_sprites_on_line: 0,
             x: 0,
             y: 0,
             i: 0,
-            ticks: 0,
+            dots: 0,
         }
     }
 }
@@ -68,8 +74,15 @@ impl GameBoy {
             self.gpu.sprites.push(self.get_sprite_data(i));
         }
 
-        if self.gpu.ticks == 40 {
+        if self.gpu.dots == 0 {
+            self.bus[LY] = 0;
+        }
+
+        if self.gpu.dots == 80 {
             self.gpu.state = GPUState::PixelTransfer;
+            self.gpu.dots = 0;
+        } else {
+            self.gpu.dots += 1;
         }
     }
 
@@ -78,6 +91,12 @@ impl GameBoy {
             false => 0x9800,
             true => 0x9C00,
         };
+
+        // There's a delay of 12 dots at the beginning of this mode due to the tile
+        // fetching below
+        if self.gpu.dots == 0 {
+            self.gpu.dots += 12;
+        }
 
         // Y Scrolling
         // The gameboy tilemap is 32x32 tiles, both `SCX` and `SCY` use pixels, not tiles
@@ -126,9 +145,17 @@ impl GameBoy {
                 self.gpu.i -= 20;
             }
 
-            self.gpu.rendered_sprites_on_line = 0;
             self.gpu.y += 1;
+        }
+
+        // TODO: Implement the OBJ penalty algorithm, relevant link:
+        // https://gbdev.io/pandocs/Rendering.html
+        if self.gpu.dots >= 160 {
             self.gpu.state = GPUState::HBlank;
+            self.gpu.dots = 0;
+        } else {
+            // Because one dot = one pixel
+            self.gpu.dots += 8;
         }
     }
 
@@ -136,18 +163,24 @@ impl GameBoy {
     /// VBlank if all the lines have been rendered, or OAM Search if there's another
     /// line we need to render
     fn hblank(&mut self) {
-        if self.gpu.ticks != 456 {
-            return;
+        if self.gpu.dots == 0 {
+            self.gpu.x = 0;
+            self.gpu.rendered_sprites_on_line = 0;
+            self.bus[LY] = self.bus[LY].wrapping_add(1);
         }
 
-        self.gpu.ticks = 0;
-        self.gpu.x = 0;
-        self.bus[LY] = self.bus[LY].wrapping_add(1);
+        // This should be 376 - the duration of the pixel transfer, but pixel transfer is
+        // hard-coded to 160 as of now
+        if self.gpu.dots == 376 - 160 {
+            self.gpu.state = if self.bus[LY] == 144 {
+                GPUState::VBlank
+            } else {
+                GPUState::PixelTransfer
+            };
 
-        self.gpu.state = if self.bus[LY] == DISPLAY_SIZE_Y as u8 {
-            GPUState::VBlank
+            self.gpu.dots = 0;
         } else {
-            GPUState::OAMSearch
+            self.gpu.dots += 1;
         }
     }
 
@@ -155,29 +188,53 @@ impl GameBoy {
     /// "invisible" lines that are not seen on the screen, while we loop over this lines
     /// we are in VBlank territory
     fn vblank(&mut self) {
-        if self.gpu.ticks != 456 {
-            return;
-        }
+        const VBLANK_LINE_DOTS: u16 = 456;
 
-        self.gpu.ticks = 0;
-        self.bus[LY] = self.bus[LY].wrapping_add(1);
-
-        if self.bus[LY] == 153 {
-            self.bus[LY] = 0;
+        if self.gpu.dots == 0 {
             self.gpu.y = 0;
             self.gpu.i = 0;
+        }
+
+        // After every line
+        if self.gpu.dots % VBLANK_LINE_DOTS == 0 {
+            self.bus[LY] = self.bus[LY].wrapping_add(1);
+        }
+
+        // There are 10 lines of VBlank
+        if self.gpu.dots == VBLANK_LINE_DOTS * 10 {
             self.gpu.state = GPUState::OAMSearch;
+            self.gpu.dots = 0;
+        } else {
+            self.gpu.dots += 1;
         }
     }
 
     pub(crate) fn tick(&mut self) {
+        // The seventh bith of LCDC controls wheter or not the display is on. If it is off
+        // we reset the gpu state
+        if !self.bus[LCDC].get_bit(7) {
+            self.gpu.hybernated = true;
+        }
+
+        // Resetting the GPU at every tick is *very* expensive, so we reset LY,
+        // because programs might need LY, and also the GPU state, otherwise the GPU will
+        // be stuck at hblank, making the program crash because of addition overflow.
+        if self.gpu.hybernated {
+            self.bus[LY] = 0;
+            self.gpu.state = GPUState::OAMSearch;
+        }
+
+        // We reset the GPU only when
+        if self.gpu.hybernated && self.bus[LCDC].get_bit(7) {
+            self.gpu.hybernated = false;
+            self.gpu = Gpu::new();
+        }
+
         match self.gpu.state {
             GPUState::OAMSearch => self.oam_search(),
             GPUState::PixelTransfer => self.pixel_transfer(),
             GPUState::HBlank => self.hblank(),
             GPUState::VBlank => self.vblank(),
         }
-
-        self.gpu.ticks += 1;
     }
 }
