@@ -1,11 +1,14 @@
 use colored::{ColoredString, Colorize};
 use std::{
-    fmt::LowerHex,
+    fmt::{Binary, LowerHex},
     io::{self, stdin, stdout, Write},
     process::exit,
 };
 
-use gameman::GameBoy;
+use gameman::{
+    consts::gpu::{LCDC, LY, STAT},
+    GameBoy,
+};
 
 fn ask_input(text: &str) -> String {
     let mut input = String::new();
@@ -22,6 +25,10 @@ fn ask_input(text: &str) -> String {
 // Output functions
 fn hex_to_string<T: LowerHex>(hex: T) -> ColoredString {
     format!("{:x}", hex).bold().green()
+}
+
+fn bin_to_string<T: Binary>(bin: T) -> ColoredString {
+    format!("{:b}", bin).bold().green()
 }
 
 fn bool_to_symbol(boolean: bool) -> ColoredString {
@@ -79,6 +86,29 @@ fn pretty_print_gameboy(gameboy: &GameBoy) -> Result<(), io::Error> {
         lock,
         "  Current opcode: {}",
         hex_to_string(gameboy.bus.read_from_rom(gameboy.registers.pc))
+    )?;
+
+    writeln!(lock, "{}", "Special addresses".bold().red())?;
+
+    writeln!(
+        lock,
+        "  LY: {} ({})",
+        hex_to_string(gameboy.bus[LY]),
+        bin_to_string(gameboy.bus[LY])
+    )?;
+
+    writeln!(
+        lock,
+        "  LCDC: {} ({})",
+        hex_to_string(gameboy.bus[LCDC]),
+        bin_to_string(gameboy.bus[LCDC])
+    )?;
+
+    writeln!(
+        lock,
+        "  STAT: {} ({})",
+        hex_to_string(gameboy.bus[STAT]),
+        bin_to_string(gameboy.bus[STAT])
     )?;
 
     Ok(())
