@@ -5,6 +5,7 @@ use common::merge_two_u8s_into_u16;
 use consts::bus::ROM_SIZE;
 use flags::Flags;
 use gpu::states::Gpu;
+use interrupts::Interrupt;
 use registers::Registers;
 
 mod bus;
@@ -24,6 +25,10 @@ pub struct GameBoy {
     pub registers: Registers,
     pub flags: Flags,
     pub gpu: Gpu,
+
+    /// This is needed because we cannot fire the same interrupt twice in a row, so we
+    /// have to keep track of the last one
+    previous_interrupt: Option<Interrupt>,
 }
 
 impl GameBoy {
@@ -33,6 +38,7 @@ impl GameBoy {
             registers: Registers::new(),
             flags: Flags::new(),
             gpu: Gpu::new(),
+            previous_interrupt: None,
         })
     }
 
@@ -42,6 +48,7 @@ impl GameBoy {
             registers: Registers::new(),
             flags: Flags::new(),
             gpu: Gpu::new(),
+            previous_interrupt: None,
         }
     }
 

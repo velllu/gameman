@@ -11,12 +11,16 @@ pub mod bus {
 }
 
 pub mod gpu {
+    pub const IF: u16 = 0xFF0F;
     pub const LCDC: u16 = 0xFF40;
+    pub const STAT: u16 = 0xFF41;
     pub const SCY: u16 = 0xFF42;
     pub const SCX: u16 = 0xFF43;
     pub const LY: u16 = 0xFF44;
+    pub const LYC: u16 = 0xFF45;
     pub const OBP0: u16 = 0xFF48;
     pub const OBP1: u16 = 0xFF49;
+    pub const IE: u16 = 0xFFFF;
 }
 
 pub mod display {
