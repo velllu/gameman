@@ -104,6 +104,7 @@ impl GameBoy {
 
 // Call functions
 impl GameBoy {
+    // TODO: Make these two functions just one
     pub(crate) fn call(&mut self, location: u16) {
         // We need to add 3 to the PC because the `call` instruction uses the PC of the
         // next instruction, a `call` instruction is 3 bytes long so we need to skip
@@ -128,6 +129,11 @@ impl GameBoy {
         self.registers.sp = self.registers.sp.wrapping_add(1);
 
         self.registers.pc = merge_two_u8s_into_u16(first_byte, second_byte);
+    }
+
+    fn return_from_interrupt(&mut self) {
+        self.return_();
+        self.flags.ime = true;
     }
 }
 
@@ -405,6 +411,7 @@ impl GameBoy {
 
             // RET
             0xC9 => { self.return_(); (0, 4) },
+            0xD9 => { self.return_from_interrupt(); (0, 4) }
 
             0xC0 =>
                 if !self.flags.zero { self.return_(); (0, 5) }
