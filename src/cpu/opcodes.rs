@@ -105,11 +105,19 @@ impl GameBoy {
 // Call functions
 impl GameBoy {
     // TODO: Make these two functions just one
-    pub(crate) fn call(&mut self, location: u16) {
+    /// # Parameters
+    /// - **add_three**, whether we add three to the PC, this should be true whenever this
+    /// functions is called from the CPU. TODO: Find a cleaner way to do this
+    pub(crate) fn call(&mut self, location: u16, add_three: bool) {
         // We need to add 3 to the PC because the `call` instruction uses the PC of the
         // next instruction, a `call` instruction is 3 bytes long so we need to skip
         // 3 bytes. Please do not ask how much this took me to debug.
-        let (p, c) = split_u16_into_two_u8s(self.registers.pc + 3);
+        // Hello I am from the future, adding this line of code made my life worse, this
+        // god forsaken piece of assware is the roots of my restless nights
+        let (p, c) = split_u16_into_two_u8s(match add_three {
+            true => self.registers.pc + 3,
+            false => self.registers.pc,
+        });
 
         self.registers.sp = self.registers.sp.wrapping_sub(1);
         self.bus[self.registers.sp] = c;
@@ -391,22 +399,22 @@ impl GameBoy {
                 else { (2, 2) }
 
             // Calls
-            0xCD => { self.call(self.next_two()); (0, 6) },
+            0xCD => { self.call(self.next_two(), true); (0, 6) },
 
             0xC4 =>
-                if !self.flags.zero { self.call(self.next_two()); (0, 6) }
+                if !self.flags.zero { self.call(self.next_two(), true); (0, 6) }
                 else { (3, 3) }
 
             0xCC =>
-                if self.flags.zero { self.call(self.next_two()); (0, 6) }
+                if self.flags.zero { self.call(self.next_two(), true); (0, 6) }
                 else { (3, 3) }
 
             0xD4 =>
-                if !self.flags.carry { self.call(self.next_two()); (0, 6) }
+                if !self.flags.carry { self.call(self.next_two(), true); (0, 6) }
                 else { (3, 3) }
 
             0xDC =>
-                if self.flags.carry { self.call(self.next_two()); (0, 6) }
+                if self.flags.carry { self.call(self.next_two(), true); (0, 6) }
                 else { (3, 3) }
 
             // RET

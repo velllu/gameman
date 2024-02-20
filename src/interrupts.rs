@@ -51,7 +51,7 @@ impl GameBoy {
             Interrupt::Stat => 0x48,
         };
 
-        self.call(return_address);
+        self.call(return_address, false);
 
         let mut input_flags = self.bus[IF];
         input_flags.set_bit(if_bit, false);
