@@ -7,7 +7,10 @@ use crate::{
     GameBoy,
 };
 
-use super::{sprite_parser::SpriteData, Color};
+use super::{
+    sprite_parser::{SpriteData, SpriteHeight},
+    Color,
+};
 
 #[derive(PartialEq, Debug)]
 pub enum GPUState {
@@ -92,6 +95,11 @@ impl GameBoy {
             true => 0x9C00,
         };
 
+        let sprite_height = match self.bus[LCDC].get_bit(2) {
+            false => SpriteHeight::Short,
+            true => SpriteHeight::Tall,
+        };
+
         // There's a delay of 12 dots at the beginning of this mode due to the tile
         // fetching below
         if self.gpu.dots == 0 {
@@ -115,7 +123,7 @@ impl GameBoy {
 
         // And we get both background/window fifo and the sprite fifo
         let background_fifo = self.get_line(self.bus[tile_map_address], self.gpu.y as u16 % 8);
-        let mut sprite = self.get_sprite_fifo(self.gpu.x, self.gpu.y);
+        let mut sprite = self.get_sprite_fifo(self.gpu.x, self.gpu.y, &sprite_height);
 
         if let Some((sprite_fifo, sprite_data)) = &mut sprite {
             if self.gpu.rendered_sprites_on_line < 10 {

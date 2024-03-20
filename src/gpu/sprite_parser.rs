@@ -2,6 +2,12 @@ use crate::{common::Bit, GameBoy};
 
 use super::{tile_parser::Line, Color};
 
+#[derive(Clone, Copy)]
+pub(crate) enum SpriteHeight {
+    Short = 8,
+    Tall = 16,
+}
+
 #[derive(PartialEq, Eq)]
 pub(crate) enum Priority {
     AlwaysAbove,
@@ -49,7 +55,12 @@ impl GameBoy {
         }
     }
 
-    pub(crate) fn get_sprite_fifo(&self, x: u8, y: u8) -> Option<(Line, &SpriteData)> {
+    pub(crate) fn get_sprite_fifo(
+        &self,
+        x: u8,
+        y: u8,
+        sprite_height: &SpriteHeight,
+    ) -> Option<(Line, &SpriteData)> {
         let mut sprite_fifo: Option<(Line, &SpriteData)> = None;
 
         for sprite in &self.gpu.sprites {
@@ -63,18 +74,31 @@ impl GameBoy {
             // We check if there is any sprite that is on the same x axis as our "cursor"
             let x_condition = sprite_x == x;
 
-            // and we check if we also are on the same y axis, however, a sprite is 8
-            // pixel long, so we check if we are anywhere between row 1 to 8
-            let y_condition = ((sprite_y)..(sprite_y + 8)).contains(&y);
+            // And we check if the sprite is contained in the range of the sprite's height
+            let y_condition = ((sprite_y)..(sprite_y + *sprite_height as u8)).contains(&y);
+
+            // This is the line of the sprite we are currently processing
+            let current_line = y % *sprite_height as u8;
+
+            // When the sprite is 8x8 we can just use the actual tile number, but when the
+            // sprite is 8x16, the higher part of it needs to be ANDed with `0xFE` and the
+            // lower part needs to be ORed with `0x01`, when y flipping is on, we do the
+            // opposite
+            let tile_number = match (sprite_height, sprite.y_flip) {
+                (&SpriteHeight::Short, _) => sprite.tile_number,
+
+                // High part
+                (&SpriteHeight::Tall, false) if current_line >= 8 => sprite.tile_number & 0xFE,
+                (&SpriteHeight::Tall, true) if current_line >= 8 => sprite.tile_number | 0x01,
+
+                // Low part
+                (&SpriteHeight::Tall, false) => sprite.tile_number | 0x01,
+                (&SpriteHeight::Tall, true) => sprite.tile_number & 0xFE,
+            };
 
             if x_condition && y_condition {
                 sprite_fifo = Some((
-                    self.get_line_rotation(
-                        sprite.tile_number,
-                        y as u16 % 8,
-                        sprite.x_flip,
-                        sprite.y_flip,
-                    ),
+                    self.get_line_rotation(tile_number, y as u16 % 8, sprite.x_flip, sprite.y_flip),
                     sprite,
                 ));
             }
