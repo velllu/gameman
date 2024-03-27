@@ -46,15 +46,24 @@ impl GameBoy {
     pub(crate) fn get_line(&self, tile_number: u8, y: u16) -> Line {
         let mut tile = Line::new_blank();
 
-        // When the gameboy converts from u8 to u16, in this case, it adds 0s on the
-        // right instead of the left, so `0xF8` becomes `0xF800` instead of `0x00F8` as
-        // one might expect
-        let tile_number: u16 = (tile_number as u16) << 4;
+        // To calculate the address to fetch we calculate
+        // `TileDataRegion + (TileNumber << 4)`
 
+        // LCDC.4 is used to set the tile data region, when it's zero, the region is
+        // between 8800-97FF and 8000-8FFF. So, if the tile number is 10, and LCDC.4 is
+        // set, it will go look at 0x8100, but if LCDC.4 is not set, it will go look at
+        // 0x9100. Both these region share a common ground
         let tile_data_address: u16 = match self.bus[LCDC].get_bit(4) {
-            false => 0x8800,
+            // If the tile number is above 0x80, it means that we are in the common
+            // so we can just start counting from 0x8000, otherwise, we'll start from
+            // 0x9000
+            false if tile_number < 0x80 => 0x9000,
+            false => 0x8000,
+
             true => 0x8000,
         };
+
+        let tile_number: u16 = (tile_number as u16) << 4;
 
         let low = self.bus[tile_data_address + tile_number + y * 2];
         let high = self.bus[tile_data_address + tile_number + y * 2 + 1];
