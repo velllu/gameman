@@ -9,6 +9,7 @@ use crate::{
 
 use super::{
     sprite_parser::{SpriteData, SpriteHeight},
+    tile_parser::Line,
     Color,
 };
 
@@ -98,10 +99,13 @@ impl GameBoy {
         }
 
         // And we get the background fifo and the sprite fifo
-        let background_fifo = self.get_line_from_coordinates(
-            self.gpu.x.wrapping_add(self.bus[SCX]),
-            self.gpu.y.wrapping_add(self.bus[SCY]),
-        );
+        let background_fifo = match self.bus[LCDC].get_bit(0) {
+            false => Line::new_blank(), // When LCDC.0 is 0, the background tile is white
+            true => self.get_line_from_coordinates(
+                self.gpu.x.wrapping_add(self.bus[SCX]),
+                self.gpu.y.wrapping_add(self.bus[SCY]),
+            ),
+        };
 
         let mut sprite = self.get_sprite_fifo(self.gpu.x, self.gpu.y, &sprite_height);
 
