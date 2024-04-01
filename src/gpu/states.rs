@@ -38,9 +38,6 @@ pub struct Gpu {
     x: u8,
     y: u8,
 
-    /// This is the offset to add to the tile map address
-    i: u16,
-
     /// A dot is 1/4 of a CPU cycle
     dots: u16,
 }
@@ -55,7 +52,6 @@ impl Gpu {
             rendered_sprites_on_line: 0,
             x: 0,
             y: 0,
-            i: 0,
             dots: 0,
         }
     }
@@ -90,11 +86,6 @@ impl GameBoy {
     }
 
     fn pixel_transfer(&mut self) {
-        let mut tile_map_address: u16 = match self.bus[0xFF40].get_bit(3) {
-            false => 0x9800,
-            true => 0x9C00,
-        };
-
         let sprite_height = match self.bus[LCDC].get_bit(2) {
             false => SpriteHeight::Short,
             true => SpriteHeight::Tall,
@@ -106,23 +97,12 @@ impl GameBoy {
             self.gpu.dots += 12;
         }
 
-        // Y Scrolling
-        // The gameboy tilemap is 32x32 tiles, both `SCX` and `SCY` use pixels, not tiles
-        // so we have to divide them by 8, skipping 32 tiles just means to set the
-        // "cursor" on the line below
-        for _ in 0..(self.bus[SCY] / 8) {
-            tile_map_address += 32;
-        }
+        // And we get the background fifo and the sprite fifo
+        let background_fifo = self.get_line_from_coordinates(
+            self.gpu.x.wrapping_add(self.bus[SCX]),
+            self.gpu.y.wrapping_add(self.bus[SCY]),
+        );
 
-        // X Scrolling
-        // We add the number of tiles to skip to the adress
-        tile_map_address += self.bus[SCX] as u16 / 8;
-
-        // Adding i
-        tile_map_address += self.gpu.i;
-
-        // And we get both background/window fifo and the sprite fifo
-        let background_fifo = self.get_line(self.bus[tile_map_address], self.gpu.y as u16 % 8);
         let mut sprite = self.get_sprite_fifo(self.gpu.x, self.gpu.y, &sprite_height);
 
         if let Some((sprite_fifo, sprite_data)) = &mut sprite {
@@ -130,7 +110,7 @@ impl GameBoy {
                 self.apply_palette_to_sprite(sprite_fifo, &sprite_data.palette);
                 sprite_fifo.mix_with_background_tile(&background_fifo, &sprite_data.priority);
 
-                self.draw_line(&sprite_fifo, self.gpu.x as usize, self.gpu.y as usize);
+                self.draw_line(sprite_fifo, self.gpu.x as usize, self.gpu.y as usize);
                 self.gpu.rendered_sprites_on_line += 1;
             } else {
                 self.draw_line(&background_fifo, self.gpu.x as usize, self.gpu.y as usize);
@@ -139,20 +119,9 @@ impl GameBoy {
             self.draw_line(&background_fifo, self.gpu.x as usize, self.gpu.y as usize);
         }
 
-        self.gpu.i += 1;
         self.gpu.x += 8;
 
         if self.gpu.x == (DISPLAY_SIZE_X as u8) {
-            // If we finished rendering all the 20 tiles, and we want to go to the next
-            // set of tile, we skip 12, because the tile map is 32x32, and the viewport
-            // is 20x18 (32 - 20), and if we haven't rendered the 20 tiles, we go back
-            // to the first one
-            if self.gpu.y % 8 == 7 {
-                self.gpu.i += 12;
-            } else {
-                self.gpu.i -= 20;
-            }
-
             self.gpu.y += 1;
         }
 
@@ -200,7 +169,6 @@ impl GameBoy {
 
         if self.gpu.dots == 0 {
             self.gpu.y = 0;
-            self.gpu.i = 0;
         }
 
         // After every line

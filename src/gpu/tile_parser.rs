@@ -43,7 +43,13 @@ impl Line {
 }
 
 impl GameBoy {
-    pub(crate) fn get_line(&self, tile_number: u8, y: u16) -> Line {
+    /// Returns the given line of a tile
+    /// # Parameters
+    /// - *tile_number*: The tile of the number, it will follow LCDC.4's tile data area
+    /// specification
+    /// - *line_y*: The line of the tile that we want to get, as a tile is 8x8, this
+    /// number can go from 0 to 7
+    pub(crate) fn get_line_from_tile_number(&self, tile_number: u8, line_y: u8) -> Line {
         let mut tile = Line::new_blank();
 
         // To calculate the address to fetch we calculate
@@ -65,21 +71,37 @@ impl GameBoy {
 
         let tile_number: u16 = (tile_number as u16) << 4;
 
-        let low = self.bus[tile_data_address + tile_number + y * 2];
-        let high = self.bus[tile_data_address + tile_number + y * 2 + 1];
+        let low = self.bus[tile_data_address + tile_number + line_y as u16 * 2];
+        let high = self.bus[tile_data_address + tile_number + line_y as u16 * 2 + 1];
 
         tile.draw_line(high, low);
         tile
     }
 
-    pub(crate) fn get_line_rotation(
+    /// Returns the line that should be at the given coordinates of the screen (excluding
+    /// horizontal and vertical scroll)
+    pub(crate) fn get_line_from_coordinates(&self, x: u8, y: u8) -> Line {
+        let tile_map_address: u16 = match self.bus[0xFF40].get_bit(3) {
+            false => 0x9800,
+            true => 0x9C00,
+        };
+
+        // TODO: This gets tricky when the X Scrolling is not a multiplier of 8
+        let tiled_y = y / 8; // The Y tile number
+        let tiled_x = x / 8; // The X tile number
+
+        let tile_number = self.bus[tile_map_address + (tiled_y as u16 * 0x20) + tiled_x as u16];
+        self.get_line_from_tile_number(tile_number, y % 8)
+    }
+
+    pub(crate) fn get_line_from_tile_number_with_rotation(
         &self,
         tile_number: u8,
-        y: u16,
+        y: u8,
         x_flip: bool,
         y_flip: bool,
     ) -> Line {
-        let mut line = self.get_line(
+        let mut line = self.get_line_from_tile_number(
             tile_number,
             match y_flip {
                 false => y,

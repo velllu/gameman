@@ -98,7 +98,12 @@ impl GameBoy {
 
             if x_condition && y_condition {
                 sprite_fifo = Some((
-                    self.get_line_rotation(tile_number, y as u16 % 8, sprite.x_flip, sprite.y_flip),
+                    self.get_line_from_tile_number_with_rotation(
+                        tile_number,
+                        y % 8,
+                        sprite.x_flip,
+                        sprite.y_flip,
+                    ),
                     sprite,
                 ));
             }
