@@ -40,7 +40,7 @@ pub struct Gpu {
     y: u8,
 
     /// A dot is 1/4 of a CPU cycle
-    dots: u16,
+    pub dots: u16,
 }
 
 impl Gpu {
