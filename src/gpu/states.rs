@@ -2,7 +2,7 @@ use crate::{
     common::Bit,
     consts::{
         display::{DISPLAY_SIZE_X, DISPLAY_SIZE_Y},
-        gpu::{LCDC, LY, SCX, SCY},
+        gpu::{LCDC, LY, SCX, SCY, WX, WY},
     },
     GameBoy,
 };
@@ -36,8 +36,8 @@ pub struct Gpu {
     rendered_sprites_on_line: u8,
 
     // These represent the current position of the "cursor"
-    x: u8,
-    y: u8,
+    pub(crate) x: u8,
+    pub(crate) y: u8,
 
     /// A dot is 1/4 of a CPU cycle
     pub dots: u16,
@@ -98,12 +98,16 @@ impl GameBoy {
             self.gpu.dots += 12;
         }
 
+        // TODO: Scrolling is actually handled a bit differently, read this
+        // "https://gbdev.io/pandocs/Scrolling.html#mid-frame-behavior"
+
         // And we get the background fifo and the sprite fifo
         let background_fifo = match self.bus[LCDC].get_bit(0) {
             false => Line::new_blank(), // When LCDC.0 is 0, the background tile is white
             true => self.get_line_from_coordinates(
                 self.gpu.x.wrapping_add(self.bus[SCX]),
                 self.gpu.y.wrapping_add(self.bus[SCY]),
+                false,
             ),
         };
 
@@ -121,6 +125,17 @@ impl GameBoy {
             }
         } else {
             self.draw_line(&background_fifo, self.gpu.x as usize, self.gpu.y as usize);
+        }
+
+        // Window rendering
+        // `- 7` because WX is always 7 more then the actual value
+        let window_x = self.gpu.x as i32 - (self.bus[WX] as i32 - 7);
+        let window_y = self.gpu.y as i32 - self.bus[WY] as i32;
+
+        // Window doesn't scroll so we don't wrap around like with the background
+        if window_x >= 0 && window_y >= 0 && self.can_render_window() {
+            let window_fifo = self.get_line_from_coordinates(window_x as u8, window_y as u8, true);
+            self.draw_line(&window_fifo, self.gpu.x as usize, self.gpu.y as usize);
         }
 
         self.gpu.x += 8;

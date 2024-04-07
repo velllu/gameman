@@ -80,8 +80,13 @@ impl GameBoy {
 
     /// Returns the line that should be at the given coordinates of the screen (excluding
     /// horizontal and vertical scroll)
-    pub(crate) fn get_line_from_coordinates(&self, x: u8, y: u8) -> Line {
-        let tile_map_address: u16 = match self.bus[0xFF40].get_bit(3) {
+    pub(crate) fn get_line_from_coordinates(&self, x: u8, y: u8, window: bool) -> Line {
+        let lcdc_bit = match window {
+            false => 3,
+            true => 6,
+        };
+
+        let tile_map_address: u16 = match self.bus[LCDC].get_bit(lcdc_bit) {
             false => 0x9800,
             true => 0x9C00,
         };
