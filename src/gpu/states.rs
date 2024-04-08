@@ -41,6 +41,10 @@ pub struct Gpu {
 
     /// A dot is 1/4 of a CPU cycle
     pub dots: u16,
+
+    /// This is similar to LY, except it only gets incremented when the window is visible
+    /// and it's needed for window rendering
+    window_ly: u8,
 }
 
 impl Gpu {
@@ -54,6 +58,7 @@ impl Gpu {
             x: 0,
             y: 0,
             dots: 0,
+            window_ly: 0,
         }
     }
 }
@@ -76,6 +81,7 @@ impl GameBoy {
 
         if self.gpu.dots == 0 {
             self.bus[LY] = 0;
+            self.gpu.window_ly = 0;
         }
 
         if self.gpu.dots == 80 {
@@ -130,7 +136,7 @@ impl GameBoy {
         // Window rendering
         // `- 7` because WX is always 7 more then the actual value
         let window_x = self.gpu.x as i32 - (self.bus[WX] as i32 - 7);
-        let window_y = self.gpu.y as i32 - self.bus[WY] as i32;
+        let window_y = self.gpu.window_ly as i32 - self.bus[WY] as i32;
 
         // Window doesn't scroll so we don't wrap around like with the background
         if window_x >= 0 && window_y >= 0 && self.can_render_window() {
@@ -160,6 +166,10 @@ impl GameBoy {
     /// line we need to render
     fn hblank(&mut self) {
         if self.gpu.dots == 0 {
+            if self.is_window_visible() {
+                self.gpu.window_ly = self.gpu.window_ly.wrapping_add(1);
+            }
+
             self.gpu.x = 0;
             self.gpu.rendered_sprites_on_line = 0;
             self.bus[LY] = self.bus[LY].wrapping_add(1);
@@ -216,6 +226,7 @@ impl GameBoy {
         // be stuck at hblank, making the program crash because of addition overflow.
         if self.gpu.hybernated {
             self.bus[LY] = 0;
+            self.gpu.window_ly = 0;
             self.gpu.state = GPUState::OAMSearch;
         }
 
