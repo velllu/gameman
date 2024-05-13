@@ -5,7 +5,7 @@ use std::{
 
 use gameman::{
     consts::display::{DISPLAY_SIZE_X, DISPLAY_SIZE_Y},
-    gpu::Color,
+    gpu::states::Color,
     GameBoy,
 };
 use macroquad::{
