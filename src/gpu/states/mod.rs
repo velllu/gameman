@@ -48,6 +48,7 @@ impl Gpu {
                 tile_id: 0,
                 tile_data_low: 0,
                 tile_data_high: 0,
+                is_first_call: true,
             },
             x: 0,
             y: 0,

@@ -30,6 +30,15 @@ impl GameBoy {
             PixelTransferState::Sleep => PixelTransferState::PushPixels,
             PixelTransferState::PushPixels => PixelTransferState::GetTile,
         };
+
+        self.gpu.pixel_transfer_data.is_first_call = true;
+    }
+
+    /// Inverts the `is_first_call` field and returns the previous value, meant to be used
+    /// in the pixel transfer states to check wheter to activate step 1 or step 2
+    fn is_first_call(&mut self) -> bool {
+        self.gpu.pixel_transfer_data.is_first_call = !self.gpu.pixel_transfer_data.is_first_call;
+        !self.gpu.pixel_transfer_data.is_first_call
     }
 
     /// In this state the pixels are getting fetched and put into the screen, it has 5
@@ -42,7 +51,10 @@ impl GameBoy {
     /// This is a super helpful resource:
     /// https://github.com/ISSOtm/pandocs/blob/rendering-internals/src/Rendering_Internals.md
     pub(super) fn pixel_transfer(&mut self) {
-        println!("{:?}", self.gpu.pixel_transfer_data.state);
+        println!(
+            "{:?}, {}",
+            self.gpu.pixel_transfer_data.state, self.gpu.ticks
+        );
 
         match self.gpu.pixel_transfer_data.state {
             PixelTransferState::GetTile => self.get_tile(),
@@ -72,10 +84,8 @@ impl GameBoy {
         self.gpu.ticks += 1;
     }
 
-    /// Look at the link above to see the formula laid out in a table
-    /// TODO: This can be *massively* improved when rust adds yielding
     fn get_tile(&mut self) {
-        match self.gpu.ticks % 2 == 0 {
+        match self.is_first_call() {
             // On the first dot the GPU gets LCDC.3
             true => {
                 self.gpu.pixel_transfer_data.lcdc_3 = self.bus[LCDC].get_bit(3);
@@ -88,6 +98,7 @@ impl GameBoy {
                 let tile_y: u16 = (self.gpu.y as u16 + self.bus[SCY] as u16) / 8;
                 let tile_x: u16 = (self.gpu.x as u16 + self.bus[SCX] as u16) / 8;
 
+                // https://github.com/ISSOtm/pandocs/blob/rendering-internals/src/Rendering_Internals.md#bg-fetcher
                 let address = (base << 11) | (lcdc_3 << 10) | (tile_y << 5) | tile_x;
                 self.gpu.pixel_transfer_data.tile_id = self.bus[address];
 
@@ -99,7 +110,7 @@ impl GameBoy {
     fn get_tile_data(&mut self, is_high_part: bool) {
         // This instruction takes two ticks, cpus are so fast that we can just do it all
         // in the second tick
-        if self.gpu.ticks % 2 == 0 {
+        if self.is_first_call() {
             return;
         }
 
@@ -109,6 +120,7 @@ impl GameBoy {
         let tile_id = self.gpu.pixel_transfer_data.tile_id as u16;
         let ly_scy = (self.gpu.y as u16 + self.bus[SCY] as u16) % 8;
 
+        // https://github.com/ISSOtm/pandocs/blob/rendering-internals/src/Rendering_Internals.md#get-tile-row-low
         let address =
             (base << 13) | (bit_12 << 12) | (tile_id << 4) | (ly_scy << 1) | is_high_part as u16;
 
@@ -134,12 +146,14 @@ impl GameBoy {
     }
 }
 
+/// This function builds the line of a tile by the two bytes that represent it. The two
+// bits from both bytes dictate the color of a single pixel
 fn bytes_to_slice(low: u8, high: u8) -> Slice {
     let mut new_slice = [PixelData {
         color: Color::Light,
     }; 8];
 
-    for i in 0..7 {
+    for i in 0..8 {
         new_slice[i] = PixelData {
             color: match (low.get_bit(i as u8), high.get_bit(i as u8)) {
                 (false, false) => Color::Light,
@@ -165,4 +179,8 @@ pub(super) struct PixelTransferData {
     // Get tile data
     pub(super) tile_data_low: u8,
     pub(super) tile_data_high: u8,
+
+    /// Pixel transfer states usually happen in two steps, to track wheter to activate
+    /// step 1 or step 2 we use this field
+    pub(super) is_first_call: bool,
 }
