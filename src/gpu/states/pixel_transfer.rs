@@ -51,17 +51,11 @@ impl GameBoy {
     /// This is a super helpful resource:
     /// https://github.com/ISSOtm/pandocs/blob/rendering-internals/src/Rendering_Internals.md
     pub(super) fn pixel_transfer(&mut self) {
-        println!(
-            "{:?}, {}",
-            self.gpu.pixel_transfer_data.state, self.gpu.ticks
-        );
-
         match self.gpu.pixel_transfer_data.state {
             PixelTransferState::GetTile => self.get_tile(),
             PixelTransferState::GetLowTileData => self.get_tile_data(false),
             PixelTransferState::GetHighTileData => self.get_tile_data(true),
-            PixelTransferState::Sleep if self.gpu.ticks % 2 != 0 => self.cycle_state(),
-            PixelTransferState::Sleep => {}
+            PixelTransferState::Sleep => self.sleep(),
             PixelTransferState::PushPixels => self.push_pixels(),
         }
 
@@ -93,13 +87,12 @@ impl GameBoy {
 
             // On the second dot the GPU calculates the tilemap address and fetches it
             false => {
-                let base: u16 = 0b10011;
-                let lcdc_3: u16 = self.gpu.pixel_transfer_data.lcdc_3 as u16;
-                let tile_y: u16 = (self.gpu.y as u16 + self.bus[SCY] as u16) / 8;
-                let tile_x: u16 = (self.gpu.x as u16 + self.bus[SCX] as u16) / 8;
-
                 // https://github.com/ISSOtm/pandocs/blob/rendering-internals/src/Rendering_Internals.md#bg-fetcher
-                let address = (base << 11) | (lcdc_3 << 10) | (tile_y << 5) | tile_x;
+                let address = 0b10011 << 11
+                    | (self.gpu.pixel_transfer_data.lcdc_3 as u16) << 10
+                    | (self.gpu.y as u16 + self.bus[SCY] as u16) / 8 << 5
+                    | (self.gpu.x as u16 + self.bus[SCX] as u16) / 8;
+
                 self.gpu.pixel_transfer_data.tile_id = self.bus[address];
 
                 self.cycle_state();
@@ -108,21 +101,24 @@ impl GameBoy {
     }
 
     fn get_tile_data(&mut self, is_high_part: bool) {
+        /// Implementation of this gate:
+        /// https://github.com/furrtek/DMG-CPU-Inside/blob/f0eda633eac24b51a8616ff782225d06fccbd81f/Schematics/25_VRAM_INTERFACE.png
+        fn vuza_gate(x: u8, y: u8) -> u16 {
+            !((x & 0x10) != 0 || (y & 0x80) != 0) as u16
+        }
+
         // This instruction takes two ticks, cpus are so fast that we can just do it all
         // in the second tick
         if self.is_first_call() {
             return;
         }
 
-        let base: u16 = 0b100;
-        let bit_12 = !((self.bus[LCDC] & 0x10) != 0
-            || (self.gpu.pixel_transfer_data.tile_id & 0x80) != 0) as u16;
-        let tile_id = self.gpu.pixel_transfer_data.tile_id as u16;
-        let ly_scy = (self.gpu.y as u16 + self.bus[SCY] as u16) % 8;
-
         // https://github.com/ISSOtm/pandocs/blob/rendering-internals/src/Rendering_Internals.md#get-tile-row-low
-        let address =
-            (base << 13) | (bit_12 << 12) | (tile_id << 4) | (ly_scy << 1) | is_high_part as u16;
+        let address = 0b100 << 13
+            | vuza_gate(self.bus[LCDC], self.gpu.pixel_transfer_data.tile_id) << 12
+            | (self.gpu.pixel_transfer_data.tile_id as u16) << 4
+            | ((self.gpu.y as u16 + self.bus[SCY] as u16) % 8) << 1
+            | is_high_part as u16;
 
         match is_high_part {
             false => self.gpu.pixel_transfer_data.tile_data_low = self.bus[address],
@@ -144,10 +140,16 @@ impl GameBoy {
 
         self.cycle_state();
     }
+
+    fn sleep(&mut self) {
+        if !self.is_first_call() {
+            self.cycle_state();
+        }
+    }
 }
 
 /// This function builds the line of a tile by the two bytes that represent it. The two
-// bits from both bytes dictate the color of a single pixel
+/// bits from both bytes dictate the color of a single pixel
 fn bytes_to_slice(low: u8, high: u8) -> Slice {
     let mut new_slice = [PixelData {
         color: Color::Light,
