@@ -9,9 +9,6 @@ use crate::{
 
 use super::{Color, GpuState, PixelData};
 
-/// A line of a tile
-type Slice = [PixelData; 8];
-
 #[derive(PartialEq, Debug)]
 pub(super) enum PixelTransferState {
     GetTile,
@@ -60,8 +57,8 @@ impl GameBoy {
         }
 
         // Pop one pixel and display it
-        if let Some(color) = self.gpu.background_fifo.contents.pop() {
-            self.gpu.screen[self.gpu.y as usize][self.gpu.x as usize] = color.color;
+        if let Some(pixel_data) = self.gpu.background_fifo.pop() {
+            self.gpu.screen[self.gpu.y as usize][self.gpu.x as usize] = pixel_data.color;
             self.gpu.x += 1;
         }
 
@@ -69,10 +66,13 @@ impl GameBoy {
         // https://gbdev.io/pandocs/Rendering.html
 
         if self.gpu.x == DISPLAY_SIZE_X as u8 {
-            self.gpu.y += 1;
-            self.gpu.x = 0;
+            self.gpu.pixel_transfer_data.number_of_slices_pushed = 0;
             self.gpu.state = GpuState::HBlank;
             self.gpu.ticks = 0;
+            self.gpu.x = 0;
+            self.gpu.y += 1;
+
+            return;
         }
 
         self.gpu.ticks += 1;
@@ -87,14 +87,17 @@ impl GameBoy {
 
             // On the second dot the GPU calculates the tilemap address and fetches it
             false => {
+                // This is where the X pointer would be if we always pushed 8 pixels at a
+                // time (which happens when SCX is not a multiple of 8)
+                let virtual_x = self.gpu.pixel_transfer_data.number_of_slices_pushed * 8;
+
                 // https://github.com/ISSOtm/pandocs/blob/rendering-internals/src/Rendering_Internals.md#bg-fetcher
                 let address = 0b10011 << 11
                     | (self.gpu.pixel_transfer_data.lcdc_3 as u16) << 10
-                    | (self.gpu.y as u16 + self.bus[SCY] as u16) / 8 << 5
-                    | (self.gpu.x as u16 + self.bus[SCX] as u16) / 8;
+                    | (self.gpu.y.wrapping_add(self.bus[SCY]) as u16 / 8) << 5
+                    | (virtual_x.wrapping_add(self.bus[SCX])) as u16 / 8;
 
                 self.gpu.pixel_transfer_data.tile_id = self.bus[address];
-
                 self.cycle_state();
             }
         }
@@ -117,7 +120,7 @@ impl GameBoy {
         let address = 0b100 << 13
             | vuza_gate(self.bus[LCDC], self.gpu.pixel_transfer_data.tile_id) << 12
             | (self.gpu.pixel_transfer_data.tile_id as u16) << 4
-            | ((self.gpu.y as u16 + self.bus[SCY] as u16) % 8) << 1
+            | (self.gpu.y.wrapping_add(self.bus[SCY]) as u16 % 8) << 1
             | is_high_part as u16;
 
         match is_high_part {
@@ -129,14 +132,26 @@ impl GameBoy {
     }
 
     fn push_pixels(&mut self) {
-        if !self.gpu.background_fifo.contents.is_empty() {
+        if !self.gpu.background_fifo.is_empty() {
             return;
         }
 
-        self.gpu.background_fifo.append(&bytes_to_slice(
+        self.gpu.background_fifo.append(&mut bytes_to_slice(
             self.gpu.pixel_transfer_data.tile_data_low,
             self.gpu.pixel_transfer_data.tile_data_high,
         ));
+
+        if self.gpu.pixel_transfer_data.number_of_slices_pushed == 0 {
+            self.gpu.background_fifo.clear();
+        }
+
+        if self.gpu.pixel_transfer_data.number_of_slices_pushed == 1 {
+            for _ in 0..(self.bus[SCX] % 8) {
+                self.gpu.background_fifo.pop();
+            }
+        }
+
+        self.gpu.pixel_transfer_data.number_of_slices_pushed += 1;
 
         self.cycle_state();
     }
@@ -150,23 +165,21 @@ impl GameBoy {
 
 /// This function builds the line of a tile by the two bytes that represent it. The two
 /// bits from both bytes dictate the color of a single pixel
-fn bytes_to_slice(low: u8, high: u8) -> Slice {
-    let mut new_slice = [PixelData {
-        color: Color::Light,
-    }; 8];
+fn bytes_to_slice(low: u8, high: u8) -> Vec<PixelData> {
+    let mut pixel_data: Vec<PixelData> = Vec::new();
 
     for i in 0..8 {
-        new_slice[i] = PixelData {
+        pixel_data.push(PixelData {
             color: match (low.get_bit(i as u8), high.get_bit(i as u8)) {
                 (false, false) => Color::Light,
                 (false, true) => Color::MediumlyLight,
                 (true, false) => Color::MediumlyDark,
                 (true, true) => Color::Dark,
             },
-        }
+        });
     }
 
-    new_slice
+    pixel_data
 }
 
 /// Gpu Data that is specific to the pixel transfer process, to not clutter the main gpu
@@ -185,4 +198,7 @@ pub(super) struct PixelTransferData {
     /// Pixel transfer states usually happen in two steps, to track wheter to activate
     /// step 1 or step 2 we use this field
     pub(super) is_first_call: bool,
+
+    /// The number of times that we added pixels to the fifo
+    pub(super) number_of_slices_pushed: u8,
 }

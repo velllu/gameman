@@ -5,7 +5,7 @@ use std::{
 
 use gameman::{
     consts::display::{DISPLAY_SIZE_X, DISPLAY_SIZE_Y},
-    gpu::states::Color,
+    gpu::Color,
     GameBoy,
 };
 use macroquad::{
@@ -72,7 +72,7 @@ async fn main() {
             0.0,
             WHITE,
             DrawTextureParams {
-                dest_size: Some(vec2(400., 400.)),
+                dest_size: Some(vec2(4. * DISPLAY_SIZE_X as f32, 4. * DISPLAY_SIZE_Y as f32)),
                 ..Default::default()
             },
         );

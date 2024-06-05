@@ -4,7 +4,7 @@ use bus::{Bus, BusError};
 use common::merge_two_u8s_into_u16;
 use consts::bus::ROM_SIZE;
 use flags::Flags;
-use gpu::states::Gpu;
+use gpu::Gpu;
 use registers::Registers;
 
 mod bus;
