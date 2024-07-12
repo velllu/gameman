@@ -47,7 +47,10 @@ impl Gpu {
                 tile_data_low: 0,
                 tile_data_high: 0,
                 is_first_call: true,
-                number_of_slices_pushed: 0,
+
+                // Starting with zero would case an underflow error when calculating the
+                // tile address
+                number_of_slices_pushed: 1,
             },
             x: 0,
             y: 0,

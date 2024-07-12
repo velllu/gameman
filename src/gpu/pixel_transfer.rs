@@ -1,3 +1,6 @@
+#![allow(clippy::precedence)] // i think it's much less clear when formatting like clippy
+                              // wants to
+
 use crate::{
     common::Bit,
     consts::{
@@ -89,7 +92,7 @@ impl GameBoy {
             false => {
                 // This is where the X pointer would be if we always pushed 8 pixels at a
                 // time (which happens when SCX is not a multiple of 8)
-                let virtual_x = self.gpu.pixel_transfer_data.number_of_slices_pushed * 8;
+                let virtual_x = (self.gpu.pixel_transfer_data.number_of_slices_pushed - 1) * 8;
 
                 // https://github.com/ISSOtm/pandocs/blob/rendering-internals/src/Rendering_Internals.md#bg-fetcher
                 let address = 0b10011 << 11
