@@ -28,8 +28,12 @@ impl BackgroundLayer {
 }
 
 impl Layer for BackgroundLayer {
-    fn is_layer_enabled(&self, _bus: &Bus) -> bool {
-        true
+    fn is_layer_enabled(&self, bus: &Bus) -> bool {
+        if bus[LCDC].get_bit(0) {
+            return true;
+        }
+
+        false
     }
 
     /// On the first dot the GPU gets LCDC.3
