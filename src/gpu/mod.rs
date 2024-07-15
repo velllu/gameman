@@ -2,6 +2,8 @@ mod blanks;
 mod oam_search;
 mod pixel_transfer;
 
+use pixel_transfer::{background::BackgroundLayer, Layer};
+
 use crate::{
     consts::{
         display::{DISPLAY_SIZE_X, DISPLAY_SIZE_Y},
@@ -10,7 +12,7 @@ use crate::{
     GameBoy,
 };
 
-use self::pixel_transfer::{PixelTransferData, PixelTransferState};
+use self::pixel_transfer::PixelTransferState;
 
 impl GameBoy {
     fn switch_when_ticks(&mut self, ticks: u16, new_state: GpuState) {
@@ -40,21 +42,12 @@ impl Gpu {
             screen: [[Color::Light; DISPLAY_SIZE_X]; DISPLAY_SIZE_Y],
             ticks: 0,
             state: GpuState::OamSearch,
-            pixel_transfer_data: PixelTransferData {
-                state: PixelTransferState::GetTile,
-                lcdc_3: false,
-                tile_id: 0,
-                tile_data_low: 0,
-                tile_data_high: 0,
-                is_first_call: true,
-
-                // Starting with zero would case an underflow error when calculating the
-                // tile address
-                number_of_slices_pushed: 1,
-            },
+            pixel_transfer_state: PixelTransferState::GetTile,
+            layers: [Box::new(BackgroundLayer::new())],
+            is_pixel_transfer_first_call: true,
             x: 0,
             y: 0,
-            background_fifo: Vec::new(),
+            fifo: Vec::new(),
         }
     }
 }
@@ -63,14 +56,23 @@ pub struct Gpu {
     pub screen: [[Color; DISPLAY_SIZE_X]; DISPLAY_SIZE_Y],
     pub ticks: u16,
     pub state: GpuState,
-
-    // Pixel transfer
-    pixel_transfer_data: PixelTransferData,
-
     pub x: u8,
     pub y: u8,
 
-    background_fifo: Vec<PixelData>,
+    fifo: Vec<PixelData>,
+
+    /// The GameBoy has three layers, this array houses those layers, they are decoupled
+    /// from the other GPU code
+    layers: [Box<dyn Layer>; 1],
+
+    /// The GPU has 4 states, one of which is pixel transfer, which also has many states
+    pixel_transfer_state: PixelTransferState,
+
+    /// The pixel transfer states happen in 2 dots, this is true whenever we are currently
+    /// executing the first one, and false when execute the second one, since the gpu code
+    /// is decoupled from the layers, the layer don't need to track this, it's handled by
+    /// the `pixel_transfer/mod.rs` file
+    is_pixel_transfer_first_call: bool,
 }
 
 #[derive(Clone, Copy, Debug)]

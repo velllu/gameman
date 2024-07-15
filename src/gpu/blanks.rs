@@ -6,7 +6,6 @@ impl GameBoy {
     pub(super) fn hblank(&mut self) {
         if self.gpu.ticks == 0 {
             self.gpu.x = 0;
-            self.gpu.background_fifo.clear();
         }
 
         self.switch_when_ticks(
