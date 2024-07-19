@@ -78,7 +78,7 @@ impl Layer for WindowLayer {
         }
     }
 
-    fn push_pixels(&mut self, number_of_slices_pushed: u8, bus: &Bus) -> Vec<PixelData> {
+    fn push_pixels(&mut self, _number_of_slices_pushed: u8, bus: &Bus) -> Vec<PixelData> {
         if !self.is_layer_enabled(bus) {
             // Return 8 blank pixels
             return vec![
@@ -89,12 +89,6 @@ impl Layer for WindowLayer {
             ];
         }
 
-        let mut slice = bytes_to_slice(self.tile_data_low, self.tile_data_high);
-
-        if number_of_slices_pushed == 0 {
-            slice.clear(); // The first slice is always dumped for some reason
-        }
-
-        slice
+        bytes_to_slice(self.tile_data_low, self.tile_data_high)
     }
 }

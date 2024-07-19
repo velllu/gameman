@@ -137,6 +137,10 @@ impl GameBoy {
 
         let mut slice = self.gpu.layers[1].push_pixels(self.gpu.number_of_slices_pushed, &self.bus);
 
+        if self.gpu.number_of_slices_pushed == 0 {
+            slice.clear(); // The first slice is always dumped for some reason
+        }
+
         self.gpu.number_of_slices_pushed += 1;
         self.gpu.fifo.append(&mut slice);
         self.cycle_state();

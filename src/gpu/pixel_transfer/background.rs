@@ -75,10 +75,6 @@ impl Layer for BackgroundLayer {
 
         let mut slice = bytes_to_slice(self.tile_data_low, self.tile_data_high);
 
-        if number_of_slices_pushed == 0 {
-            slice.clear(); // The first slice is always dumped for some reason
-        }
-
         // X Scrolling, we remove pixels from the first slice of the line so all the next
         // tiles will be at an offset. It's important to clear the fifo when the line has
         // been rendered otherwise the offset could affect the next line too
