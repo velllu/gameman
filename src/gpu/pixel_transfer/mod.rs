@@ -12,6 +12,7 @@ use crate::{bus::Bus, common::Bit, consts::display::DISPLAY_SIZE_X, GameBoy};
 /// the common parts are defined in this file.
 pub(crate) trait Layer: Send {
     fn is_layer_enabled(&self, bus: &Bus) -> bool;
+    fn mix_with_layer_below(&self) -> bool;
     fn get_tile_step_1(&mut self, bus: &Bus);
     fn get_tile_step_2(&mut self, virtual_x: u8, x: u8, y: u8, bus: &Bus);
     fn get_tile_data(&mut self, is_high_part: bool, virtual_x: u8, x: u8, y: u8, bus: &Bus);
@@ -135,7 +136,19 @@ impl GameBoy {
             return;
         }
 
-        let mut slice = self.gpu.layers[1].push_pixels(self.gpu.number_of_slices_pushed, &self.bus);
+        let mut slice: Vec<PixelData> = vec![
+            PixelData {
+                color: Color::Light
+            };
+            8
+        ];
+
+        for layer in self.gpu.layers.iter_mut() {
+            if layer.mix_with_layer_below() {
+                let new_slice = layer.push_pixels(self.gpu.number_of_slices_pushed, &self.bus);
+                slice = mix_slices(&slice, &new_slice);
+            }
+        }
 
         if self.gpu.number_of_slices_pushed == 0 {
             slice.clear(); // The first slice is always dumped for some reason
@@ -176,4 +189,18 @@ fn bytes_to_slice(low: u8, high: u8) -> Vec<PixelData> {
 /// https://github.com/furrtek/DMG-CPU-Inside/blob/f0eda633eac24b51a8616ff782225d06fccbd81f/Schematics/25_VRAM_INTERFACE.png
 pub(super) fn vuza_gate(x: u8, y: u8) -> u16 {
     !((x & 0x10) != 0 || (y & 0x80) != 0) as u16
+}
+
+fn mix_slices(first_slice: &[PixelData], second_slice: &[PixelData]) -> Vec<PixelData> {
+    let mut new_slice: Vec<PixelData> = Vec::new();
+
+    for (first_pixel, second_pixel) in first_slice.iter().zip(second_slice) {
+        if second_pixel.color == Color::Light {
+            new_slice.push(*first_pixel);
+        } else {
+            new_slice.push(*second_pixel);
+        }
+    }
+
+    new_slice
 }

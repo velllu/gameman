@@ -34,6 +34,10 @@ impl Layer for BackgroundLayer {
         false
     }
 
+    fn mix_with_layer_below(&self) -> bool {
+        true
+    }
+
     fn get_tile_step_1(&mut self, bus: &Bus) {
         self.lcdc_3 = bus[LCDC].get_bit(3);
     }

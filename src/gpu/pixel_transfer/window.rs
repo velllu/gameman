@@ -34,12 +34,18 @@ impl Layer for WindowLayer {
         false
     }
 
+    fn mix_with_layer_below(&self) -> bool {
+        true
+    }
+
     fn get_tile_step_1(&mut self, bus: &Bus) {
         self.lcdc_6 = bus[LCDC].get_bit(6);
     }
 
-    fn get_tile_step_2(&mut self, _virtual_x: u8, x: u8, y: u8, bus: &Bus) {
-        let window_x: i32 = x as i32 - (bus[WX] as i32 - 7);
+    fn get_tile_step_2(&mut self, virtual_x: u8, _x: u8, y: u8, bus: &Bus) {
+        // This is `-7` because WX as an offset of 7, anything below that will not be
+        // rendered
+        let window_x: i32 = virtual_x as i32 - (bus[WX] as i32 - 7);
         let window_y: i32 = y as i32 - bus[WY] as i32;
 
         if window_x.is_negative() || window_y.is_negative() {

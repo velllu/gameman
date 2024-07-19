@@ -86,7 +86,7 @@ pub struct Gpu {
     virtual_x: u8,
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Color {
     Light = 0,
     MediumlyLight = 1,
