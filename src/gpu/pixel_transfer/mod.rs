@@ -2,6 +2,7 @@
                               // wants to
 
 pub(crate) mod background;
+pub(crate) mod window;
 
 use super::{Color, GpuState, PixelData};
 use crate::{bus::Bus, common::Bit, consts::display::DISPLAY_SIZE_X, GameBoy};
@@ -12,8 +13,8 @@ use crate::{bus::Bus, common::Bit, consts::display::DISPLAY_SIZE_X, GameBoy};
 pub(crate) trait Layer: Send {
     fn is_layer_enabled(&self, bus: &Bus) -> bool;
     fn get_tile_step_1(&mut self, bus: &Bus);
-    fn get_tile_step_2(&mut self, virtual_x: u8, bus: &Bus);
-    fn get_tile_data(&mut self, is_high_part: bool, virtual_x: u8, bus: &Bus);
+    fn get_tile_step_2(&mut self, virtual_x: u8, x: u8, y: u8, bus: &Bus);
+    fn get_tile_data(&mut self, is_high_part: bool, virtual_x: u8, x: u8, y: u8, bus: &Bus);
     fn push_pixels(&mut self, number_of_slices_pushed: u8, bus: &Bus) -> Vec<PixelData>;
 }
 
@@ -100,10 +101,9 @@ impl GameBoy {
                 // time (which happens when SCX is not a multiple of 8)
                 self.gpu.virtual_x = (self.gpu.number_of_slices_pushed - 1) * 8;
 
-                self.gpu
-                    .layers
-                    .iter_mut()
-                    .for_each(|layer| layer.get_tile_step_2(self.gpu.virtual_x, &self.bus));
+                self.gpu.layers.iter_mut().for_each(|layer| {
+                    layer.get_tile_step_2(self.gpu.virtual_x, self.gpu.x, self.gpu.y, &self.bus)
+                });
 
                 self.cycle_state();
             }
@@ -117,10 +117,15 @@ impl GameBoy {
             return;
         }
 
-        self.gpu
-            .layers
-            .iter_mut()
-            .for_each(|layer| layer.get_tile_data(is_high_part, self.gpu.virtual_x, &self.bus));
+        self.gpu.layers.iter_mut().for_each(|layer| {
+            layer.get_tile_data(
+                is_high_part,
+                self.gpu.virtual_x,
+                self.gpu.x,
+                self.gpu.y,
+                &self.bus,
+            )
+        });
 
         self.cycle_state();
     }
@@ -130,7 +135,7 @@ impl GameBoy {
             return;
         }
 
-        let mut slice = self.gpu.layers[0].push_pixels(self.gpu.number_of_slices_pushed, &self.bus);
+        let mut slice = self.gpu.layers[1].push_pixels(self.gpu.number_of_slices_pushed, &self.bus);
 
         self.gpu.number_of_slices_pushed += 1;
         self.gpu.fifo.append(&mut slice);
@@ -161,4 +166,10 @@ fn bytes_to_slice(low: u8, high: u8) -> Vec<PixelData> {
     }
 
     pixel_data
+}
+
+/// Implementation of this gate:
+/// https://github.com/furrtek/DMG-CPU-Inside/blob/f0eda633eac24b51a8616ff782225d06fccbd81f/Schematics/25_VRAM_INTERFACE.png
+pub(super) fn vuza_gate(x: u8, y: u8) -> u16 {
+    !((x & 0x10) != 0 || (y & 0x80) != 0) as u16
 }

@@ -5,7 +5,7 @@ use crate::{
     gpu::{pixel_transfer::bytes_to_slice, Color, PixelData},
 };
 
-use super::Layer;
+use super::{vuza_gate, Layer};
 
 pub(crate) struct BackgroundLayer {
     lcdc_3: bool,
@@ -34,13 +34,11 @@ impl Layer for BackgroundLayer {
         false
     }
 
-    /// On the first dot the GPU gets LCDC.3
     fn get_tile_step_1(&mut self, bus: &Bus) {
         self.lcdc_3 = bus[LCDC].get_bit(3);
     }
 
-    /// On the second dot the GPU calculates the tilemap address and fetches it
-    fn get_tile_step_2(&mut self, virtual_x: u8, bus: &Bus) {
+    fn get_tile_step_2(&mut self, virtual_x: u8, _x: u8, _y: u8, bus: &Bus) {
         // https://github.com/ISSOtm/pandocs/blob/rendering-internals/src/Rendering_Internals.md#bg-fetcher
         let address = 0b10011 << 11
             | (self.lcdc_3 as u16) << 10
@@ -50,13 +48,7 @@ impl Layer for BackgroundLayer {
         self.tile_id = bus[address];
     }
 
-    fn get_tile_data(&mut self, is_high_part: bool, _virtual_x: u8, bus: &Bus) {
-        /// Implementation of this gate:
-        /// https://github.com/furrtek/DMG-CPU-Inside/blob/f0eda633eac24b51a8616ff782225d06fccbd81f/Schematics/25_VRAM_INTERFACE.png
-        fn vuza_gate(x: u8, y: u8) -> u16 {
-            !((x & 0x10) != 0 || (y & 0x80) != 0) as u16
-        }
-
+    fn get_tile_data(&mut self, is_high_part: bool, _virtual_x: u8, _x: u8, _y: u8, bus: &Bus) {
         // https://github.com/ISSOtm/pandocs/blob/rendering-internals/src/Rendering_Internals.md#get-tile-row-low
         let address = 0b100 << 13
             | vuza_gate(bus[LCDC], self.tile_id) << 12

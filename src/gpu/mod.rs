@@ -2,7 +2,7 @@ mod blanks;
 mod oam_search;
 mod pixel_transfer;
 
-use pixel_transfer::{background::BackgroundLayer, Layer};
+use pixel_transfer::{background::BackgroundLayer, window::WindowLayer, Layer};
 
 use crate::{
     consts::{
@@ -45,7 +45,10 @@ impl Gpu {
             x: 0,
             y: 0,
             fifo: Vec::new(),
-            layers: [Box::new(BackgroundLayer::new())],
+            layers: [
+                Box::new(BackgroundLayer::new()),
+                Box::new(WindowLayer::new()),
+            ],
             pixel_transfer_state: PixelTransferState::GetTile,
             is_pixel_transfer_first_call: true,
             number_of_slices_pushed: 1,
@@ -65,7 +68,7 @@ pub struct Gpu {
 
     /// The GameBoy has three layers, this array houses those layers, they are decoupled
     /// from the other GPU code
-    layers: [Box<dyn Layer>; 1],
+    layers: [Box<dyn Layer>; 2],
 
     /// The GPU has 4 states, one of which is pixel transfer, which also has many states
     pixel_transfer_state: PixelTransferState,
