@@ -2,7 +2,7 @@ use crate::{
     bus::Bus,
     common::Bit,
     consts::gpu::{LCDC, WX, WY},
-    gpu::{Color, PixelData},
+    gpu::{Color, Gpu, PixelData},
 };
 
 use super::{bytes_to_slice, vuza_gate, Layer};
@@ -38,15 +38,15 @@ impl Layer for WindowLayer {
         true
     }
 
-    fn get_tile_step_1(&mut self, bus: &Bus) {
+    fn get_tile_step_1(&mut self, _gpu: &Gpu, bus: &Bus) {
         self.lcdc_6 = bus[LCDC].get_bit(6);
     }
 
-    fn get_tile_step_2(&mut self, virtual_x: u8, _x: u8, y: u8, bus: &Bus) {
+    fn get_tile_step_2(&mut self, gpu: &Gpu, bus: &Bus) {
         // This is `-7` because WX as an offset of 7, anything below that will not be
         // rendered
-        let window_x: i32 = virtual_x as i32 - (bus[WX] as i32 - 7);
-        let window_y: i32 = y as i32 - bus[WY] as i32;
+        let window_x: i32 = gpu.virtual_x as i32 - (bus[WX] as i32 - 7);
+        let window_y: i32 = gpu.y as i32 - bus[WY] as i32;
 
         if window_x.is_negative() || window_y.is_negative() {
             self.tile_id = 0;
@@ -62,8 +62,8 @@ impl Layer for WindowLayer {
         self.tile_id = bus[address];
     }
 
-    fn get_tile_data(&mut self, is_high_part: bool, _virtual_x: u8, _x: u8, y: u8, bus: &Bus) {
-        let window_y: i32 = y as i32 - bus[WY] as i32;
+    fn get_tile_data(&mut self, is_high_part: bool, gpu: &Gpu, bus: &Bus) {
+        let window_y: i32 = gpu.y as i32 - bus[WY] as i32;
 
         if window_y.is_negative() {
             self.tile_data_low = 0;
@@ -84,7 +84,7 @@ impl Layer for WindowLayer {
         }
     }
 
-    fn push_pixels(&mut self, _number_of_slices_pushed: u8, bus: &Bus) -> Vec<PixelData> {
+    fn push_pixels(&mut self, _gpu: &Gpu, bus: &Bus) -> Vec<PixelData> {
         if !self.is_layer_enabled(bus) {
             // Return 8 blank pixels
             return vec![

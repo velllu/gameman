@@ -2,7 +2,7 @@ use crate::{
     bus::Bus,
     common::Bit,
     consts::gpu::{LCDC, LY, SCX, SCY},
-    gpu::{pixel_transfer::bytes_to_slice, Color, PixelData},
+    gpu::{pixel_transfer::bytes_to_slice, Color, Gpu, PixelData},
 };
 
 use super::{vuza_gate, Layer};
@@ -38,21 +38,21 @@ impl Layer for BackgroundLayer {
         true
     }
 
-    fn get_tile_step_1(&mut self, bus: &Bus) {
+    fn get_tile_step_1(&mut self, _gpu: &Gpu, bus: &Bus) {
         self.lcdc_3 = bus[LCDC].get_bit(3);
     }
 
-    fn get_tile_step_2(&mut self, virtual_x: u8, _x: u8, _y: u8, bus: &Bus) {
+    fn get_tile_step_2(&mut self, gpu: &Gpu, bus: &Bus) {
         // https://github.com/ISSOtm/pandocs/blob/rendering-internals/src/Rendering_Internals.md#bg-fetcher
         let address = 0b10011 << 11
             | (self.lcdc_3 as u16) << 10
             | (bus[LY].wrapping_add(bus[SCY]) as u16 / 8) << 5
-            | (virtual_x.wrapping_add(bus[SCX])) as u16 / 8;
+            | (gpu.virtual_x.wrapping_add(bus[SCX])) as u16 / 8;
 
         self.tile_id = bus[address];
     }
 
-    fn get_tile_data(&mut self, is_high_part: bool, _virtual_x: u8, _x: u8, _y: u8, bus: &Bus) {
+    fn get_tile_data(&mut self, is_high_part: bool, _gpu: &Gpu, bus: &Bus) {
         // https://github.com/ISSOtm/pandocs/blob/rendering-internals/src/Rendering_Internals.md#get-tile-row-low
         let address = 0b100 << 13
             | vuza_gate(bus[LCDC], self.tile_id) << 12
@@ -66,7 +66,7 @@ impl Layer for BackgroundLayer {
         }
     }
 
-    fn push_pixels(&mut self, number_of_slices_pushed: u8, bus: &Bus) -> Vec<PixelData> {
+    fn push_pixels(&mut self, gpu: &Gpu, bus: &Bus) -> Vec<PixelData> {
         if !self.is_layer_enabled(bus) {
             // Return 8 blank pixels
             return vec![
@@ -82,7 +82,7 @@ impl Layer for BackgroundLayer {
         // X Scrolling, we remove pixels from the first slice of the line so all the next
         // tiles will be at an offset. It's important to clear the fifo when the line has
         // been rendered otherwise the offset could affect the next line too
-        if number_of_slices_pushed == 1 {
+        if gpu.number_of_slices_pushed == 1 {
             for _ in 0..(bus[SCX] % 8) {
                 slice.pop();
             }

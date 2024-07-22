@@ -4,7 +4,7 @@
 pub(crate) mod background;
 pub(crate) mod window;
 
-use super::{Color, GpuState, PixelData};
+use super::{Color, Gpu, GpuState, PixelData};
 use crate::{bus::Bus, common::Bit, consts::display::DISPLAY_SIZE_X, GameBoy};
 
 /// The GameBoy's GPU works by having three "layers", the background layer, the window
@@ -13,10 +13,10 @@ use crate::{bus::Bus, common::Bit, consts::display::DISPLAY_SIZE_X, GameBoy};
 pub(crate) trait Layer: Send {
     fn is_layer_enabled(&self, bus: &Bus) -> bool;
     fn mix_with_layer_below(&self) -> bool;
-    fn get_tile_step_1(&mut self, bus: &Bus);
-    fn get_tile_step_2(&mut self, virtual_x: u8, x: u8, y: u8, bus: &Bus);
-    fn get_tile_data(&mut self, is_high_part: bool, virtual_x: u8, x: u8, y: u8, bus: &Bus);
-    fn push_pixels(&mut self, number_of_slices_pushed: u8, bus: &Bus) -> Vec<PixelData>;
+    fn get_tile_step_1(&mut self, gpu: &Gpu, bus: &Bus);
+    fn get_tile_step_2(&mut self, gpu: &Gpu, bus: &Bus);
+    fn get_tile_data(&mut self, is_high_part: bool, gpu: &Gpu, bus: &Bus);
+    fn push_pixels(&mut self, gpu: &Gpu, bus: &Bus) -> Vec<PixelData>;
 }
 
 #[derive(PartialEq, Debug)]
@@ -91,10 +91,9 @@ impl GameBoy {
     fn get_tile(&mut self) {
         match self.is_first_call() {
             true => self
-                .gpu
                 .layers
                 .iter_mut()
-                .for_each(|layer| layer.get_tile_step_1(&self.bus)),
+                .for_each(|layer| layer.get_tile_step_1(&self.gpu, &self.bus)),
 
             false => {
                 // TODO: Figure out why this is needed, it's driving me crazy
@@ -102,9 +101,9 @@ impl GameBoy {
                 // time (which happens when SCX is not a multiple of 8)
                 self.gpu.virtual_x = (self.gpu.number_of_slices_pushed - 1) * 8;
 
-                self.gpu.layers.iter_mut().for_each(|layer| {
-                    layer.get_tile_step_2(self.gpu.virtual_x, self.gpu.x, self.gpu.y, &self.bus)
-                });
+                self.layers
+                    .iter_mut()
+                    .for_each(|layer| layer.get_tile_step_2(&self.gpu, &self.bus));
 
                 self.cycle_state();
             }
@@ -118,15 +117,9 @@ impl GameBoy {
             return;
         }
 
-        self.gpu.layers.iter_mut().for_each(|layer| {
-            layer.get_tile_data(
-                is_high_part,
-                self.gpu.virtual_x,
-                self.gpu.x,
-                self.gpu.y,
-                &self.bus,
-            )
-        });
+        for layer in self.layers.iter_mut() {
+            layer.get_tile_data(is_high_part, &self.gpu, &self.bus);
+        }
 
         self.cycle_state();
     }
@@ -143,9 +136,9 @@ impl GameBoy {
             8
         ];
 
-        for layer in self.gpu.layers.iter_mut() {
+        for layer in self.layers.iter_mut() {
             if layer.mix_with_layer_below() {
-                let new_slice = layer.push_pixels(self.gpu.number_of_slices_pushed, &self.bus);
+                let new_slice = layer.push_pixels(&self.gpu, &self.bus);
                 slice = mix_slices(&slice, &new_slice);
             }
         }
