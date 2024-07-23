@@ -2,6 +2,7 @@
                               // wants to
 
 pub(crate) mod background;
+pub(crate) mod sprite;
 pub(crate) mod window;
 
 use super::{Color, Gpu, GpuState, PixelData};

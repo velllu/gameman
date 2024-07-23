@@ -2,6 +2,8 @@ mod blanks;
 mod oam_search;
 pub(crate) mod pixel_transfer;
 
+use pixel_transfer::sprite::SpriteData;
+
 use crate::{
     consts::{
         display::{DISPLAY_SIZE_X, DISPLAY_SIZE_Y},
@@ -43,6 +45,7 @@ impl Gpu {
             x: 0,
             y: 0,
             fifo: Vec::new(),
+            sprites: Vec::new(),
             pixel_transfer_state: PixelTransferState::GetTile,
             is_pixel_transfer_first_call: true,
             number_of_slices_pushed: 1,
@@ -59,6 +62,9 @@ pub struct Gpu {
     pub y: u8,
 
     fifo: Vec<PixelData>,
+
+    /// This is filled during OAM Search
+    sprites: Vec<SpriteData>,
 
     /// The GPU has 4 states, one of which is pixel transfer, which also has many states
     pixel_transfer_state: PixelTransferState,

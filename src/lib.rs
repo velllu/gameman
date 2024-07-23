@@ -5,7 +5,9 @@ use common::merge_two_u8s_into_u16;
 use consts::bus::ROM_SIZE;
 use flags::Flags;
 use gpu::{
-    pixel_transfer::{background::BackgroundLayer, window::WindowLayer, Layer},
+    pixel_transfer::{
+        background::BackgroundLayer, sprite::SpriteLayer, window::WindowLayer, Layer,
+    },
     Gpu,
 };
 use registers::Registers;
@@ -30,7 +32,7 @@ pub struct GameBoy {
 
     /// The GameBoy's screen has three layers, this array houses those layers, they are
     /// decoupled from the other parts of the emulator
-    layers: [Box<dyn Layer>; 2],
+    layers: [Box<dyn Layer>; 3],
 
     // TODO: Remove this, to make the code better. Check `interrupts.rs` for more
     // information on why this is needed
@@ -47,6 +49,7 @@ impl GameBoy {
             layers: [
                 Box::new(BackgroundLayer::new()),
                 Box::new(WindowLayer::new()),
+                Box::new(SpriteLayer::new()),
             ],
             previous_lcd: None,
         })
@@ -61,6 +64,7 @@ impl GameBoy {
             layers: [
                 Box::new(BackgroundLayer::new()),
                 Box::new(WindowLayer::new()),
+                Box::new(SpriteLayer::new()),
             ],
             previous_lcd: None,
         }
