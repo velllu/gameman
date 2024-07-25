@@ -1,8 +1,8 @@
 use crate::{
     bus::Bus,
-    common::{merge_two_u8s_into_u16, Bit},
+    common::Bit,
     consts::gpu::{BGP, LCDC, LY, SCX, SCY},
-    gpu::{pixel_transfer::bytes_to_slice, Color, Gpu, PixelData},
+    gpu::{pixel_transfer::bytes_to_slice, Color, Gpu, PixelData, Priority},
 };
 
 use super::{bools_to_color, vuza_gate, Layer};
@@ -34,8 +34,8 @@ impl Layer for BackgroundLayer {
         false
     }
 
-    fn mix_with_layer_below(&self) -> bool {
-        true
+    fn mix_with_layer_below(&self) -> Priority {
+        Priority::AlwaysAbove
     }
 
     fn get_tile_step_1(&mut self, _gpu: &Gpu, bus: &Bus) {

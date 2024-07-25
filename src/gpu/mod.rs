@@ -103,3 +103,14 @@ pub enum GpuState {
 pub(crate) struct PixelData {
     pub(crate) color: Color,
 }
+
+#[derive(Clone, Copy)]
+pub(crate) enum Priority {
+    AlwaysAbove,
+
+    /// When the underlaying slice shows through the light pixels of the above slice
+    TransparentLight,
+
+    /// When the above slice's pixels are drawn only above light pixels
+    AboveLight,
+}

@@ -5,7 +5,7 @@ pub(crate) mod background;
 pub(crate) mod sprite;
 pub(crate) mod window;
 
-use super::{Color, Gpu, GpuState, PixelData};
+use super::{Color, Gpu, GpuState, PixelData, Priority};
 use crate::{bus::Bus, common::Bit, consts::display::DISPLAY_SIZE_X, GameBoy};
 
 /// The GameBoy's GPU works by having three "layers", the background layer, the window
@@ -13,7 +13,7 @@ use crate::{bus::Bus, common::Bit, consts::display::DISPLAY_SIZE_X, GameBoy};
 /// the common parts are defined in this file.
 pub(crate) trait Layer: Send {
     fn is_layer_enabled(&self, bus: &Bus) -> bool;
-    fn mix_with_layer_below(&self) -> bool;
+    fn mix_with_layer_below(&self) -> Priority;
     fn get_tile_step_1(&mut self, gpu: &Gpu, bus: &Bus);
     fn get_tile_step_2(&mut self, gpu: &Gpu, bus: &Bus);
     fn get_tile_data(&mut self, is_high_part: bool, gpu: &Gpu, bus: &Bus);
@@ -138,10 +138,13 @@ impl GameBoy {
         ];
 
         for layer in self.layers.iter_mut() {
-            if layer.mix_with_layer_below() {
-                let new_slice = layer.push_pixels(&self.gpu, &self.bus);
-                slice = mix_slices(&slice, &new_slice);
-            }
+            let new_slice = layer.push_pixels(&self.gpu, &self.bus);
+
+            slice = match layer.mix_with_layer_below() {
+                Priority::AlwaysAbove => new_slice,
+                Priority::TransparentLight => mix_slices(&slice, &new_slice),
+                Priority::AboveLight => mix_above_light(&slice, &new_slice),
+            };
         }
 
         if self.gpu.number_of_slices_pushed == 0 {
@@ -197,6 +200,20 @@ fn mix_slices(first_slice: &[PixelData], second_slice: &[PixelData]) -> Vec<Pixe
             new_slice.push(*first_pixel);
         } else {
             new_slice.push(*second_pixel);
+        }
+    }
+
+    new_slice
+}
+
+fn mix_above_light(first_slice: &[PixelData], second_slice: &[PixelData]) -> Vec<PixelData> {
+    let mut new_slice: Vec<PixelData> = Vec::new();
+
+    for (first_pixel, second_pixel) in first_slice.iter().zip(second_slice) {
+        if first_pixel.color == Color::Light {
+            new_slice.push(*second_pixel);
+        } else {
+            new_slice.push(*first_pixel);
         }
     }
 

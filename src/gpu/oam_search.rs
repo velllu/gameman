@@ -1,8 +1,8 @@
 use crate::{common::Bit, GameBoy};
 
 use super::{
-    pixel_transfer::sprite::{Palette, Priority, SpriteData},
-    GpuState,
+    pixel_transfer::sprite::{Palette, SpriteData},
+    GpuState, Priority,
 };
 
 impl GameBoy {
@@ -30,8 +30,8 @@ impl GameBoy {
             x,
             tile_number,
             priority: match flags.get_bit(7) {
-                false => Priority::AboveLightColor,
-                true => Priority::AlwaysAbove,
+                false => Priority::TransparentLight,
+                true => Priority::AboveLight,
             },
             palette: match flags.get_bit(4) {
                 false => Palette::OBP0,

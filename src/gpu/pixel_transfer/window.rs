@@ -2,7 +2,7 @@ use crate::{
     bus::Bus,
     common::Bit,
     consts::gpu::{LCDC, WX, WY},
-    gpu::{Color, Gpu, PixelData},
+    gpu::{Color, Gpu, PixelData, Priority},
 };
 
 use super::{bytes_to_slice, vuza_gate, Layer};
@@ -34,8 +34,8 @@ impl Layer for WindowLayer {
         false
     }
 
-    fn mix_with_layer_below(&self) -> bool {
-        true
+    fn mix_with_layer_below(&self) -> Priority {
+        Priority::TransparentLight
     }
 
     fn get_tile_step_1(&mut self, _gpu: &Gpu, bus: &Bus) {
