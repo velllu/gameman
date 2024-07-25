@@ -1,11 +1,11 @@
 use crate::{
     bus::Bus,
-    common::Bit,
-    consts::gpu::{LCDC, LY, SCX, SCY},
+    common::{merge_two_u8s_into_u16, Bit},
+    consts::gpu::{BGP, LCDC, LY, SCX, SCY},
     gpu::{pixel_transfer::bytes_to_slice, Color, Gpu, PixelData},
 };
 
-use super::{vuza_gate, Layer};
+use super::{bools_to_color, vuza_gate, Layer};
 
 pub(crate) struct BackgroundLayer {
     lcdc_3: bool,
@@ -85,6 +85,22 @@ impl Layer for BackgroundLayer {
         if gpu.number_of_slices_pushed == 1 {
             for _ in 0..(bus[SCX] % 8) {
                 slice.pop();
+            }
+        }
+
+        // Palette coloring (https://gbdev.io/pandocs/Palettes.html)
+        let palette = bus[BGP];
+        let id_0 = bools_to_color(palette.get_bit(1), palette.get_bit(0));
+        let id_1 = bools_to_color(palette.get_bit(3), palette.get_bit(2));
+        let id_2 = bools_to_color(palette.get_bit(5), palette.get_bit(4));
+        let id_3 = bools_to_color(palette.get_bit(7), palette.get_bit(6));
+
+        for pixel_data in &mut slice {
+            pixel_data.color = match pixel_data.color {
+                Color::Light => id_0,
+                Color::MediumlyLight => id_1,
+                Color::MediumlyDark => id_2,
+                Color::Dark => id_3,
             }
         }
 

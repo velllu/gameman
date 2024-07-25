@@ -167,16 +167,20 @@ fn bytes_to_slice(low: u8, high: u8) -> Vec<PixelData> {
 
     for i in 0..8 {
         pixel_data.push(PixelData {
-            color: match (low.get_bit(i as u8), high.get_bit(i as u8)) {
-                (false, false) => Color::Light,
-                (false, true) => Color::MediumlyLight,
-                (true, false) => Color::MediumlyDark,
-                (true, true) => Color::Dark,
-            },
+            color: bools_to_color(high.get_bit(i as u8), low.get_bit(i as u8)),
         });
     }
 
     pixel_data
+}
+
+pub(crate) fn bools_to_color(bool1: bool, bool2: bool) -> Color {
+    match (bool1, bool2) {
+        (false, false) => Color::Light,
+        (false, true) => Color::MediumlyLight,
+        (true, false) => Color::MediumlyDark,
+        (true, true) => Color::Dark,
+    }
 }
 
 /// Implementation of this gate:
