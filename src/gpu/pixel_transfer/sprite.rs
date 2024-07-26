@@ -78,7 +78,10 @@ impl Layer for SpriteLayer {
                     render_bottom_tall_sprite(&mut sprite_to_draw);
                 }
 
-                self.sprite_to_draw = Some(sprite_to_draw);
+                self.sprite_to_draw = Some(match self.sprite_to_draw {
+                    Some(existing_sprite) => sprite_priority(existing_sprite, sprite_to_draw),
+                    None => sprite_to_draw,
+                });
             }
         }
     }
@@ -178,6 +181,15 @@ fn render_bottom_tall_sprite(sprite: &mut SpriteData) {
         false => sprite.tile_number | 0b0000_0001,
         true => sprite.tile_number & 0b1111_1110,
     };
+}
+
+/// Returns the sprite with the highest priority
+fn sprite_priority(sprite1: SpriteData, sprite2: SpriteData) -> SpriteData {
+    if sprite1.x < sprite2.x {
+        return sprite1;
+    }
+
+    sprite2
 }
 
 #[derive(Clone, Copy)]

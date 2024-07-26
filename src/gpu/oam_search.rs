@@ -11,7 +11,9 @@ impl GameBoy {
             self.gpu.y = 0;
             self.gpu.sprites.clear();
 
-            for i in (0xFE00..0xFE9C).step_by(4) {
+            // We access sprites in reverse because the sprite with the lowest address has
+            // the most priority
+            for i in (0xFE00..0xFE9C).rev().step_by(4) {
                 self.gpu.sprites.push(self.get_sprite_data(i));
             }
         }
@@ -20,10 +22,10 @@ impl GameBoy {
     }
 
     fn get_sprite_data(&self, address: u16) -> SpriteData {
-        let y = self.bus[address];
-        let x = self.bus[address + 1];
-        let tile_number = self.bus[address + 2];
-        let flags = self.bus[address + 3];
+        let y = self.bus[address - 3];
+        let x = self.bus[address - 2];
+        let tile_number = self.bus[address - 1];
+        let flags = self.bus[address];
 
         SpriteData {
             y,
