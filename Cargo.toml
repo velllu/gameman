@@ -7,9 +7,3 @@ edition = "2021"
 [dev-dependencies]
 colored = "2.0.4"
 macroquad = "0.4.4"
-
-# The emulator can be very slow without optimizations, use this to make it optimized
-# along with the usual debug symbols and stuff
-[profile.release-debug]
-inherits = "dev"
-opt-level = 3
