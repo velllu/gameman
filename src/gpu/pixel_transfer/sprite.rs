@@ -45,25 +45,40 @@ impl Layer for SpriteLayer {
     /// TODO: This probably does nothing but i don't know for sure
     fn get_tile_step_1(&mut self, _gpu: &Gpu, _bus: &Bus) {}
 
-    fn get_tile_step_2(&mut self, gpu: &Gpu, _bus: &Bus) {
+    fn get_tile_step_2(&mut self, gpu: &Gpu, bus: &Bus) {
         self.sprite_to_draw = None;
 
-        if gpu.x == 0 {
-            self.rendered_sprites = 0;
-        }
+        // Sprites can either be 8 pixels high or 16 pixels high
+        let sprite_height: u8 = match bus[LCDC].get_bit(2) {
+            false => 8,
+            true => 16,
+        };
 
+        // TODO: This is kinda ugly
         for sprite in &gpu.sprites {
             if sprite.x < 16 || sprite.y < 16 {
                 continue;
             }
 
-            let sprite_x = sprite.x - 16;
-            let sprite_y = sprite.y - 16;
+            let mut sprite_to_draw = sprite.clone();
+
+            let sprite_x = sprite_to_draw.x - 16;
+            let sprite_y = sprite_to_draw.y - 16;
 
             if (sprite_x..(sprite_x + 8)).contains(&gpu.x)
-                && (sprite_y..(sprite_y + 8)).contains(&gpu.y)
+                && (sprite_y..(sprite_y + sprite_height)).contains(&gpu.y)
             {
-                self.sprite_to_draw = Some(*sprite);
+                // We are rendering the top of a tall sprite
+                if (sprite_y..(sprite_y + 8)).contains(&gpu.y) && sprite_height == 16 {
+                    render_top_tall_sprite(&mut sprite_to_draw);
+                }
+
+                // We are rendering the bottom of a tall sprite
+                if ((sprite_y + 8)..(sprite_y + 16)).contains(&gpu.y) && sprite_height == 16 {
+                    render_bottom_tall_sprite(&mut sprite_to_draw);
+                }
+
+                self.sprite_to_draw = Some(sprite_to_draw);
             }
         }
     }
@@ -81,7 +96,7 @@ impl Layer for SpriteLayer {
 
         // When vertically flipping we have to invert bits 1-3 of the address
         if sprite_to_draw.y_flip {
-            address = address ^ 0b0000_0000_0000_1110;
+            address ^= 0b0000_0000_0000_1110;
         }
 
         let mut tile_data = bus[address];
@@ -141,6 +156,28 @@ impl Layer for SpriteLayer {
         self.rendered_sprites += 1;
         slice
     }
+
+    fn at_hblank(&mut self, _bus: &Bus, _gpu: &Gpu) {
+        self.rendered_sprites = 0;
+    }
+}
+
+/// This functions gets called before rendering the top of a 16 pixel high sprite
+fn render_top_tall_sprite(sprite: &mut SpriteData) {
+    // ... and when it is, the sprite's bottom bit must be set to 0, and 1 if y flipping
+    sprite.tile_number = match sprite.y_flip {
+        false => sprite.tile_number & 0b1111_1110,
+        true => sprite.tile_number | 0b0000_0001,
+    };
+}
+
+/// This functions gets called before rendering the bottom of a 16 pixel high sprite
+fn render_bottom_tall_sprite(sprite: &mut SpriteData) {
+    // ... and when it is, the sprite's bottom bit must be set to 1, and 0 if y flipping
+    sprite.tile_number = match sprite.y_flip {
+        false => sprite.tile_number | 0b0000_0001,
+        true => sprite.tile_number & 0b1111_1110,
+    };
 }
 
 #[derive(Clone, Copy)]
