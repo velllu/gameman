@@ -11,6 +11,7 @@ use crate::{bus::Bus, common::Bit, consts::display::DISPLAY_SIZE_X, GameBoy};
 /// The GameBoy's GPU works by having three "layers", the background layer, the window
 /// layer and the sprite layer, this trait defines the parts that differ for every layer,
 /// the common parts are defined in this file.
+#[allow(unused_variables)]
 pub(crate) trait Layer: Send {
     fn is_layer_enabled(&self, bus: &Bus) -> bool;
     fn mix_with_layer_below(&self) -> Priority;
@@ -18,6 +19,10 @@ pub(crate) trait Layer: Send {
     fn get_tile_step_2(&mut self, gpu: &Gpu, bus: &Bus);
     fn get_tile_data(&mut self, is_high_part: bool, gpu: &Gpu, bus: &Bus);
     fn push_pixels(&mut self, gpu: &Gpu, bus: &Bus) -> Vec<PixelData>;
+
+    // Events
+    fn at_hblank(&mut self, bus: &Bus, gpu: &Gpu) {}
+    fn at_vblank(&mut self, bus: &Bus, gpu: &Gpu) {}
 }
 
 #[derive(PartialEq, Debug)]

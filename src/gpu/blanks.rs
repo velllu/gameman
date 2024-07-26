@@ -7,6 +7,10 @@ impl GameBoy {
         if self.gpu.ticks == 0 {
             self.gpu.x = 0;
             self.gpu.fifo.clear();
+
+            self.layers
+                .iter_mut()
+                .for_each(|layer| layer.at_hblank(&self.bus, &self.gpu));
         }
 
         self.switch_when_ticks(
@@ -24,6 +28,12 @@ impl GameBoy {
     pub(super) fn vblank(&mut self) {
         /// Amount of ticks needed to render a vblank line
         const VBLANK_LINE_TICKS: u16 = 456;
+
+        if self.gpu.ticks == 0 {
+            self.layers
+                .iter_mut()
+                .for_each(|layer| layer.at_vblank(&self.bus, &self.gpu));
+        }
 
         // After every line
         if self.gpu.ticks % VBLANK_LINE_TICKS == 0 {

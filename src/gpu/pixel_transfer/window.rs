@@ -1,7 +1,10 @@
 use crate::{
     bus::Bus,
     common::Bit,
-    consts::gpu::{LCDC, WX, WY},
+    consts::{
+        display::{DISPLAY_SIZE_X, DISPLAY_SIZE_Y},
+        gpu::{LCDC, WX, WY},
+    },
     gpu::{Color, Gpu, PixelData, Priority},
 };
 
@@ -12,6 +15,11 @@ pub(crate) struct WindowLayer {
     tile_id: u8,
     tile_data_low: u8,
     tile_data_high: u8,
+
+    /// The window has an internal line counter, when the window is turned off and then
+    /// turned on later, it will continue as if there was no interruption, contrary to the
+    /// background
+    window_ly: u8,
 }
 
 impl WindowLayer {
@@ -21,6 +29,7 @@ impl WindowLayer {
             tile_id: 0,
             tile_data_low: 0,
             tile_data_high: 0,
+            window_ly: 0,
         }
     }
 }
@@ -46,7 +55,7 @@ impl Layer for WindowLayer {
         // This is `-7` because WX as an offset of 7, anything below that will not be
         // rendered
         let window_x: i32 = gpu.virtual_x as i32 - (bus[WX] as i32 - 7);
-        let window_y: i32 = gpu.y as i32 - bus[WY] as i32;
+        let window_y: i32 = self.window_ly as i32 - bus[WY] as i32;
 
         if window_x.is_negative() || window_y.is_negative() {
             self.tile_id = 0;
@@ -97,4 +106,27 @@ impl Layer for WindowLayer {
 
         bytes_to_slice(self.tile_data_low, self.tile_data_high)
     }
+
+    fn at_hblank(&mut self, bus: &Bus, _gpu: &Gpu) {
+        if is_window_showing(bus) {
+            self.window_ly = self.window_ly.wrapping_add(1);
+        }
+    }
+
+    fn at_vblank(&mut self, _bus: &Bus, _gpu: &Gpu) {
+        self.window_ly = 0;
+    }
+}
+
+/// If WX and WY are inside the screen bounds
+fn is_window_showing(bus: &Bus) -> bool {
+    if (bus[WX] as usize) >= DISPLAY_SIZE_X + 7 {
+        return false;
+    }
+
+    if (bus[WY] as usize) >= DISPLAY_SIZE_Y {
+        return false;
+    }
+
+    true
 }
