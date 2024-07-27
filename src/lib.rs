@@ -1,8 +1,8 @@
 #![forbid(unsafe_code)]
 
 use bus::{Bus, BusError};
-use common::merge_two_u8s_into_u16;
 use consts::bus::ROM_SIZE;
+use cpu::Cpu;
 use flags::Flags;
 use gpu::{
     pixel_transfer::{
@@ -18,31 +18,25 @@ pub mod consts;
 mod cpu;
 mod flags;
 pub mod gpu;
-mod interrupts;
 mod registers;
-
-#[cfg(test)]
-mod tests;
 
 pub struct GameBoy {
     pub bus: Bus,
-    pub registers: Registers,
+    pub cpu: Cpu,
     pub flags: Flags,
     pub gpu: Gpu,
+    pub registers: Registers,
 
     /// The GameBoy's screen has three layers, this array houses those layers, they are
     /// decoupled from the other parts of the emulator
     layers: [Box<dyn Layer>; 3],
-
-    // TODO: Remove this, to make the code better. Check `interrupts.rs` for more
-    // information on why this is needed
-    previous_lcd: Option<bool>,
 }
 
 impl GameBoy {
     pub fn new(rom_path: &str) -> Result<Self, BusError> {
         Ok(Self {
             bus: Bus::new(rom_path)?,
+            cpu: Cpu::new(),
             registers: Registers::new(),
             flags: Flags::new(),
             gpu: Gpu::new(),
@@ -51,13 +45,13 @@ impl GameBoy {
                 Box::new(WindowLayer::new()),
                 Box::new(SpriteLayer::new()),
             ],
-            previous_lcd: None,
         })
     }
 
     pub fn new_from_rom_array(rom: [u8; ROM_SIZE]) -> Self {
         Self {
             bus: Bus::new_from_rom_array(rom),
+            cpu: Cpu::new(),
             registers: Registers::new(),
             flags: Flags::new(),
             gpu: Gpu::new(),
@@ -66,7 +60,6 @@ impl GameBoy {
                 Box::new(WindowLayer::new()),
                 Box::new(SpriteLayer::new()),
             ],
-            previous_lcd: None,
         }
     }
 
@@ -75,11 +68,14 @@ impl GameBoy {
         let opcode = self.next(0);
 
         // CPU - Opcodes
-        let (bytes, cycles) = self.interpret_opcode(opcode);
+        let (bytes, cycles) =
+            self.cpu
+                .interpret_opcode(opcode, &mut self.flags, &mut self.registers, &mut self.bus);
+
         self.registers.pc = self.registers.pc.wrapping_add(bytes as u16);
 
         // CPU - Interrupts
-        self.execute_interrupts();
+        self.cpu.execute_interrupts(&mut self.bus);
 
         // GPU
         for _ in 0..(cycles * 4) {
@@ -98,10 +94,5 @@ impl GameBoy {
     pub(crate) fn next(&self, offset: u16) -> u8 {
         self.bus
             .read_from_rom(self.registers.pc.wrapping_add(offset))
-    }
-
-    /// Returns the next two bytes from the `PC` register in little endian format
-    pub(crate) fn next_two(&self) -> u16 {
-        merge_two_u8s_into_u16(self.next(2), self.next(1))
     }
 }

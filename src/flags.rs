@@ -1,16 +1,14 @@
 pub struct Flags {
-    /// This gets set to true after operations like `INC R` result in a zero, note that
-    /// for some reason, some operations aren't like this, for example, `INC RR` never
-    /// sets the zero flag
+    /// This is set when the result is zero
     pub zero: bool,
 
-    /// IME, standing for "Interrupt Master Enable" is basically a switch on whether
-    /// interrupts should be handled or not
-    pub ime: bool,
-
-    // TODO: Document this other flags
+    /// This is set when the operation is a subtraction
     pub substraction: bool,
+
+    /// This is set if the lower 4 bits overflow
     pub half_carry: bool,
+
+    /// This is set if a value overflows
     pub carry: bool,
 }
 
@@ -18,16 +16,9 @@ impl Flags {
     pub(crate) fn new() -> Self {
         Self {
             zero: true,
-            ime: false,
             substraction: false,
             half_carry: true,
             carry: true,
         }
-    }
-}
-
-impl Flags {
-    pub(crate) fn update_zero_flag(&mut self, result: u8) {
-        self.zero = result == 0;
     }
 }

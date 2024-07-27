@@ -1,8 +1,10 @@
 use crate::{
+    bus::Bus,
     common::Bit,
     consts::gpu::{IE, IF, LY, LYC, STAT},
-    GameBoy,
 };
+
+use super::Cpu;
 
 #[derive(Debug, PartialEq)]
 pub enum Interrupt {
@@ -15,29 +17,28 @@ pub enum Interrupt {
     Stat,
 }
 
-impl GameBoy {
-    // TODO: Make this actually good
-    pub(crate) fn execute_interrupts(&mut self) {
-        if !self.flags.ime {
+impl Cpu {
+    pub(crate) fn execute_interrupts(&mut self, bus: &mut Bus) {
+        if !self.ime {
             return;
         }
 
-        let stat = self.bus[STAT];
-
-        let is_lcd_enabled = stat.get_bit(6) && self.bus[LYC] == self.bus[LY];
+        let stat = bus[STAT];
+        let is_lcd_enabled = stat.get_bit(6) && bus[LYC] == bus[LY];
 
         // All this thing is done because an interrupt can only be triggered if it was
         // previously off
         if let Some(is_previous_lcd_enabled) = self.previous_lcd {
             if is_lcd_enabled && !is_previous_lcd_enabled {
-                self.execute_interrupt(Interrupt::Stat);
+                self.execute_interrupt(Interrupt::Stat, bus);
             }
         }
 
         self.previous_lcd = Some(is_lcd_enabled);
     }
 
-    fn execute_interrupt(&mut self, interrupt: Interrupt) {
+    #[allow(unused)]
+    fn execute_interrupt(&mut self, interrupt: Interrupt, bus: &mut Bus) {
         // The bit corresponding to the correct interrupt, both in Interrupt Enable, and
         // Interrupt Flag bytes
         let if_bit: u8 = match interrupt {
@@ -46,7 +47,7 @@ impl GameBoy {
 
         // We can only execute an interrupt if it's turned on in the Interrupt Enable and
         // Interrupt Flag bytes
-        if self.bus[IE].get_bit(if_bit) && self.bus[IF].get_bit(if_bit) {
+        if bus[IE].get_bit(if_bit) && bus[IF].get_bit(if_bit) {
             return;
         }
 
@@ -54,10 +55,11 @@ impl GameBoy {
             Interrupt::Stat => 0x48,
         };
 
-        self.call(return_address, false);
+        // TODO: Add this back
+        // self.call(return_address, false);
 
-        let mut input_flags = self.bus[IF];
+        let mut input_flags = bus[IF];
         input_flags.set_bit(if_bit, false);
-        self.bus[IF] = input_flags;
+        bus[IF] = input_flags;
     }
 }

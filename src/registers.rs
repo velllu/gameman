@@ -1,4 +1,4 @@
-use crate::common::{merge_two_u8s_into_u16, split_u16_into_two_u8s, Operator};
+use crate::common::{merge_two_u8s_into_u16, split_u16_into_two_u8s};
 
 pub struct Registers {
     pub a: u8,
@@ -34,76 +34,40 @@ impl Default for Registers {
     }
 }
 
-pub(crate) enum OneByteRegister {
-    A,
-    B,
-    C,
-    D,
-    E,
-    H,
-    L,
+pub(crate) trait Register<T> {
+    fn get(&self) -> T;
+    fn set(&mut self, data_type: T);
 }
 
-macro_rules! set_rr {
-    ($name:ident, $first_r:ident, $second_r:ident) => {
-        pub(crate) fn $name(&mut self, value: u16) {
-            let (register1, register2) = split_u16_into_two_u8s(value);
-            self.$first_r = register1;
-            self.$second_r = register2;
-        }
-    };
-}
-
-macro_rules! get_rr {
-    ($name:ident, $first_r:ident, $second_r:ident) => {
-        pub(crate) fn $name(&self) -> u16 {
-            merge_two_u8s_into_u16(self.$first_r, self.$second_r)
-        }
-    };
-}
-
-macro_rules! increment_rr {
-    ($name:ident, $first_r:ident, $second_r:ident) => {
-        pub(crate) fn $name(&mut self, value: u16, operation: Operator) {
-            let rr = merge_two_u8s_into_u16(self.$first_r, self.$second_r);
-            let rr = match operation {
-                Operator::Inc => rr.wrapping_add(value),
-                Operator::Sub => rr.wrapping_sub(value),
-            };
-
-            let (r1, r2) = split_u16_into_two_u8s(rr);
-
-            self.$first_r = r1;
-            self.$second_r = r2;
-        }
-    };
-}
-
-impl Registers {
-    pub(crate) fn get_r(&mut self, register: OneByteRegister) -> &mut u8 {
-        match register {
-            OneByteRegister::A => &mut self.a,
-            OneByteRegister::B => &mut self.b,
-            OneByteRegister::C => &mut self.c,
-            OneByteRegister::D => &mut self.d,
-            OneByteRegister::E => &mut self.e,
-            OneByteRegister::H => &mut self.h,
-            OneByteRegister::L => &mut self.l,
-        }
+impl Register<u8> for u8 {
+    fn get(&self) -> u8 {
+        *self
     }
 
-    // All this `set_rr()`, `get_rr()`, `increment_rr()` functions are done because we
-    // cannot have a `get_rr` as registers are stored as a one byte register
+    fn set(&mut self, number: u8) {
+        *self = number;
+    }
+}
 
-    set_rr! {set_bc, b, c}
-    get_rr! {get_bc, b, c}
-    increment_rr! {increment_bc, b, c}
+impl Register<u16> for (u8, u8) {
+    fn get(&self) -> u16 {
+        merge_two_u8s_into_u16(self.1, self.0)
+    }
 
-    set_rr! {set_de, d, e}
-    get_rr! {get_de, d, e}
-    increment_rr! {increment_de, d, e}
+    fn set(&mut self, number: u16) {
+        let (high, low) = split_u16_into_two_u8s(number);
 
-    set_rr! {set_hl, h, l}
-    get_rr! {get_hl, h, l}
-    increment_rr! {increment_hl, h, l}
+        self.1 = high;
+        self.0 = low;
+    }
+}
+
+impl Register<u16> for u16 {
+    fn get(&self) -> u16 {
+        *self
+    }
+
+    fn set(&mut self, number: u16) {
+        *self = number;
+    }
 }
