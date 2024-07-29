@@ -9,8 +9,8 @@ use crate::{
 
 use super::{
     instructions::{
-        add_rr_to_rr, decrement_r, decrement_rr, increment_r, increment_rr, load_ii_into_rr,
-        load_r_into_ram, Bytes, Cycles,
+        add_rr_to_rr, call, decrement_r, decrement_rr, increment_r, increment_rr, relative_jump,
+        return_, Bytes, Cycles,
     },
     Cpu,
 };
@@ -33,20 +33,20 @@ impl Cpu {
         match opcode {
             0x00 => (1, 0), // NOP
 
-            0x01 => load_ii_into_rr(&mut (regs.b, regs.c), ii),
-            0x11 => load_ii_into_rr(&mut (regs.d, regs.e), ii),
-            0x21 => load_ii_into_rr(&mut (regs.h, regs.l), ii),
-            0x31 => load_ii_into_rr(&mut regs.sp, ii),
+            0x01 => { (regs.b, regs.c).set(ii); (3, 3) },
+            0x11 => { (regs.d, regs.e).set(ii); (3, 3) },
+            0x21 => { (regs.h, regs.l).set(ii); (3, 3) },
+            0x31 => { regs.sp = ii; (3, 3) },
 
-            0x02 => load_r_into_ram((regs.b, regs.c), regs.a, bus),
-            0x12 => load_r_into_ram((regs.d, regs.e), regs.a, bus),
-            0x70 => load_r_into_ram((regs.h, regs.l), regs.b, bus),
-            0x71 => load_r_into_ram((regs.h, regs.l), regs.c, bus),
-            0x72 => load_r_into_ram((regs.h, regs.l), regs.d, bus),
-            0x73 => load_r_into_ram((regs.h, regs.l), regs.e, bus),
-            0x74 => load_r_into_ram((regs.h, regs.l), regs.h, bus),
-            0x75 => load_r_into_ram((regs.h, regs.l), regs.l, bus),
-            0x77 => load_r_into_ram((regs.h, regs.l), regs.a, bus),
+            0x02 => { bus[(regs.b, regs.c).get()] = regs.a; (1, 2) },
+            0x12 => { bus[(regs.d, regs.e).get()] = regs.a; (1, 2) },
+            0x70 => { bus[(regs.h, regs.l).get()] = regs.b; (1, 2) },
+            0x71 => { bus[(regs.h, regs.l).get()] = regs.c; (1, 2) },
+            0x72 => { bus[(regs.h, regs.l).get()] = regs.d; (1, 2) },
+            0x73 => { bus[(regs.h, regs.l).get()] = regs.e; (1, 2) },
+            0x74 => { bus[(regs.h, regs.l).get()] = regs.h; (1, 2) },
+            0x75 => { bus[(regs.h, regs.l).get()] = regs.l; (1, 2) },
+            0x77 => { bus[(regs.h, regs.l).get()] = regs.a; (1, 2) },
 
             0x03 => increment_rr(&mut (regs.b, regs.c)),
             0x13 => increment_rr(&mut (regs.d, regs.e)),
@@ -86,6 +86,12 @@ impl Cpu {
             0x1B => decrement_rr(&mut (regs.d, regs.e)),
             0x2B => decrement_rr(&mut (regs.h, regs.l)),
             0x3B => decrement_rr(&mut regs.sp),
+
+            0x18 => relative_jump(i, regs),
+            0x20 => if !flags.zero { relative_jump(i, regs) } else { (2, 2) },
+            0x30 => if !flags.carry { relative_jump(i, regs) } else { (2, 2) },
+            0x28 => if flags.zero { relative_jump(i, regs) } else { (2, 2) },
+            0x38 => if flags.carry { relative_jump(i, regs) } else { (2, 2) },
 
             0x40 => { regs.b = regs.b; (1, 1) },
             0x41 => { regs.b = regs.c; (1, 1) },
@@ -144,6 +150,25 @@ impl Cpu {
 
             0xC3 => { regs.pc = ii; (0, 4) },
             0xE9 => { regs.pc = (regs.h, regs.l).get(); (0, 1) },
+
+            0xC9 => return_(regs, bus),
+            0xC0 => if !flags.zero { return_(regs, bus) } else { (2, 2) },
+            0xD0 => if !flags.carry { return_(regs, bus) } else { (2, 2) },
+            0xC8 => if flags.zero { return_(regs, bus) } else { (2, 2) },
+            0xD8 => if flags.carry { return_(regs, bus) } else { (2, 2) },
+
+            0xCD => call(ii, regs, bus),
+            0xC4 => if !flags.zero { call(ii, regs, bus) } else { (3, 3) },
+            0xD4 => if !flags.carry { call(ii, regs, bus) } else { (3, 3) },
+            0xCC => if flags.zero { call(ii, regs, bus) } else { (3, 3) },
+            0xDC => if flags.carry { call(ii, regs, bus) } else { (3, 3) },
+
+            0xD6 => { regs.a = regs.a.wrapping_sub(i); (2, 2) },
+
+            0xE0 => { bus[0xFF00 + i as u16] = regs.a; (2, 3) },
+            0xE2 => { bus[0xFF00 + regs.c as u16] = regs.a; (2, 3) },
+
+            0xEA => { bus[ii] = regs.a; (3, 4) },
 
             0xF3 => { self.ime = false; (1, 1) },
             0xFB => { self.ime = true; (1, 1) },

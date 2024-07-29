@@ -12,25 +12,12 @@ pub type Bytes = u8;
 /// The amounts of cycles and instruction takes
 pub type Cycles = u8;
 
-use crate::{bus::Bus, flags::Flags, registers::Register};
-
-pub(crate) fn load_ii_into_rr<R>(register: &mut R, data: u16) -> (Bytes, Cycles)
-where
-    R: Register<u16>,
-{
-    register.set(data);
-    (3, 3)
-}
-
-pub(crate) fn load_r_into_ram<RAM, R>(address: RAM, register: R, bus: &mut Bus) -> (Bytes, Cycles)
-where
-    RAM: Register<u16>,
-    R: Register<u8>,
-{
-    bus[address.get()] = register.get();
-    bus[address.get()] = register.get();
-    (1, 2)
-}
+use crate::{
+    bus::Bus,
+    common::{merge_two_u8s_into_u16, split_u16_into_two_u8s},
+    flags::Flags,
+    registers::{Register, Registers},
+};
 
 pub(crate) fn increment_rr<R>(register: &mut R) -> (Bytes, Cycles)
 where
@@ -102,6 +89,43 @@ where
     register.set(result);
 
     (1, 1)
+}
+
+pub(crate) fn call(address: u16, registers: &mut Registers, bus: &mut Bus) -> (Bytes, Cycles) {
+    let (p, c) = split_u16_into_two_u8s(registers.pc);
+
+    registers.sp = registers.sp.wrapping_sub(1);
+    bus[registers.sp] = p;
+    registers.sp = registers.sp.wrapping_sub(1);
+    bus[registers.sp] = c;
+
+    registers.pc = address;
+
+    (0, 6)
+}
+
+pub(crate) fn relative_jump(amount: u8, registers: &mut Registers) -> (Bytes, Cycles) {
+    let signed_amount = amount as i8;
+
+    if signed_amount >= 0 {
+        registers.pc = registers.pc.wrapping_add(signed_amount as u16);
+    } else {
+        registers.pc = registers
+            .pc
+            .wrapping_sub(signed_amount.unsigned_abs() as u16);
+    }
+
+    (0, 3)
+}
+
+pub(crate) fn return_(registers: &mut Registers, bus: &mut Bus) -> (Bytes, Cycles) {
+    let c = bus[registers.sp];
+    registers.sp = registers.sp.wrapping_add(1);
+    let p = bus[registers.sp];
+    registers.sp = registers.sp.wrapping_add(1);
+
+    registers.pc = merge_two_u8s_into_u16(p, c);
+    (0, 4)
 }
 
 // Utilities
