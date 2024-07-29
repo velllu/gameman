@@ -40,6 +40,14 @@ where
     (1, 2)
 }
 
+pub(crate) fn decrement_rr<R>(register: &mut R) -> (Bytes, Cycles)
+where
+    R: Register<u16>,
+{
+    register.set(register.get().wrapping_sub(1));
+    (1, 2)
+}
+
 pub(crate) fn add_rr_to_rr<R, R2>(
     register: &mut R,
     to_add: R2,
@@ -64,4 +72,56 @@ where
     register.set(result);
 
     (1, 2)
+}
+
+pub(crate) fn increment_r<R>(register: &mut R, flags: &mut Flags) -> (Bytes, Cycles)
+where
+    R: Register<u8>,
+{
+    let result = register.get().wrapping_add(1);
+
+    update_half_carry_8bit(register, Operation::Addition(1), flags);
+    flags.zero = result == 0;
+    flags.substraction = false;
+
+    register.set(result);
+
+    (1, 1)
+}
+
+pub(crate) fn decrement_r<R>(register: &mut R, flags: &mut Flags) -> (Bytes, Cycles)
+where
+    R: Register<u8>,
+{
+    let result = register.get().wrapping_sub(1);
+
+    update_half_carry_8bit(register, Operation::Subtraction(1), flags);
+    flags.zero = result == 0;
+    flags.substraction = false;
+
+    register.set(result);
+
+    (1, 1)
+}
+
+// Utilities
+enum Operation {
+    Addition(u8),
+    Subtraction(u8),
+}
+
+fn update_half_carry_8bit<R>(register: &R, amount: Operation, flags: &mut Flags)
+where
+    R: Register<u8>,
+{
+    let last_four_bits = register.get() & 0x0F;
+    let result = match amount {
+        Operation::Addition(number) => last_four_bits.checked_add(number),
+        Operation::Subtraction(number) => last_four_bits.checked_sub(number),
+    };
+
+    match result {
+        Some(_) => flags.half_carry = false,
+        None => flags.half_carry = true,
+    }
 }

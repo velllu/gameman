@@ -63,8 +63,11 @@ fn pretty_print_gameboy(gameboy: &GameBoy) -> Result<(), io::Error> {
     writeln!(lock, "{}", "Flags".bold().red())?;
     writeln!(
         lock,
-        "  Zero: {}, IME: {}",
+        "  Zero: {}, Subtraction: {}, Half Carry: {}, Carry: {}, IME: {}",
         bool_to_symbol(gameboy.flags.zero),
+        bool_to_symbol(gameboy.flags.substraction),
+        bool_to_symbol(gameboy.flags.half_carry),
+        bool_to_symbol(gameboy.flags.carry),
         bool_to_symbol(gameboy.cpu.ime),
     )?;
 
