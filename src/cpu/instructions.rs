@@ -128,6 +128,39 @@ pub(crate) fn return_(registers: &mut Registers, bus: &mut Bus) -> (Bytes, Cycle
     (0, 4)
 }
 
+pub(crate) fn push<R, R2>(
+    register_h: &R,
+    register_l: &R2,
+    sp: &mut u16,
+    bus: &mut Bus,
+) -> (Bytes, Cycles)
+where
+    R: ReadRegister<u8>,
+    R2: ReadRegister<u8>,
+{
+    *sp = sp.wrapping_sub(1);
+    bus[*sp] = register_h.get();
+    *sp = sp.wrapping_sub(1);
+    bus[*sp] = register_l.get();
+
+    (1, 4)
+}
+
+pub(crate) fn pop<R>(register: R, sp: &mut u16, bus: &mut Bus) -> (Bytes, Cycles)
+where
+    R: ReadWriteRegister<u16>,
+{
+    let low = bus[*sp];
+    *sp = sp.wrapping_add(1);
+    let high = bus[*sp];
+    *sp = sp.wrapping_add(1);
+
+    // We add 3 here too
+    register.set(merge_two_u8s_into_u16(high, low).wrapping_add(3));
+
+    (1, 4)
+}
+
 // Utilities
 enum Operation {
     Addition(u8),

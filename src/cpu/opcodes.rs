@@ -9,8 +9,8 @@ use crate::{
 
 use super::{
     instructions::{
-        add_rr_to_rr, call, decrement_r, decrement_rr, increment_r, increment_rr, relative_jump,
-        return_, Bytes, Cycles,
+        add_rr_to_rr, call, decrement_r, decrement_rr, increment_r, increment_rr, pop, push,
+        relative_jump, return_, Bytes, Cycles,
     },
     Cpu,
 };
@@ -79,7 +79,7 @@ impl Cpu {
 
             0x09 => add_rr_to_rr((&mut regs.h, &mut regs.l), (regs.b, regs.c), flags),
             0x19 => add_rr_to_rr((&mut regs.h, &mut regs.l), (regs.d, regs.e), flags),
-            0x29 => { let hl = (regs.h, regs.l); add_rr_to_rr((&mut regs.h, &mut regs.l), hl, flags) },
+            0x29 => { let hl = (regs.h, regs.l); add_rr_to_rr((&mut regs.h, &mut regs.l), hl, flags) }, // TODO: Remove this monstrosity
             0x39 => add_rr_to_rr((&mut regs.h, &mut regs.l), regs.sp, flags),
 
             0x0B => decrement_rr((&mut regs.b, &mut regs.c)),
@@ -143,6 +143,11 @@ impl Cpu {
             0x7D => { regs.a = regs.l; (1, 1) },
             0x7F => { regs.a = regs.a; (1, 1) },
 
+            0xC1 => pop((&mut regs.b, &mut regs.c), &mut regs.sp, bus),
+            0xD1 => pop((&mut regs.d, &mut regs.e), &mut regs.sp, bus),
+            0xE1 => pop((&mut regs.h, &mut regs.l), &mut regs.sp, bus),
+            0xF1 => pop((&mut regs.a, flags), &mut regs.sp, bus),
+
             0xC2 => if !flags.zero { regs.pc = ii; (0, 4) } else { (3, 3) },
             0xD2 => if !flags.carry { regs.pc = ii; (0, 4) } else { (3, 3) },
             0xCA => if flags.zero { regs.pc = ii; (0, 4) } else { (3, 3) },
@@ -150,6 +155,11 @@ impl Cpu {
 
             0xC3 => { regs.pc = ii; (0, 4) },
             0xE9 => { regs.pc = (regs.h, regs.l).get(); (0, 1) },
+
+            0xC5 => push(&regs.b, &regs.c, &mut regs.sp, bus),
+            0xD5 => push(&regs.d, &regs.e, &mut regs.sp, bus),
+            0xE5 => push(&regs.h, &regs.l, &mut regs.sp, bus),
+            0xF5 => push(&regs.b, flags, &mut regs.sp, bus),
 
             0xC9 => return_(regs, bus),
             0xC0 => if !flags.zero { return_(regs, bus) } else { (2, 2) },
