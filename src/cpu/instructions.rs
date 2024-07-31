@@ -16,33 +16,31 @@ use crate::{
     bus::Bus,
     common::{merge_two_u8s_into_u16, split_u16_into_two_u8s},
     flags::Flags,
-    registers::{Register, Registers},
+    registers::{ReadRegister, ReadWriteRegister, Registers},
 };
 
-pub(crate) fn increment_rr<R>(register: &mut R) -> (Bytes, Cycles)
+pub(crate) fn increment_rr<R>(register: R) -> (Bytes, Cycles)
 where
-    R: Register<u16>,
+    R: ReadWriteRegister<u16>,
 {
-    register.set(register.get().wrapping_add(1));
+    let incremented = register.get().wrapping_add(1);
+    register.set(incremented);
     (1, 2)
 }
 
-pub(crate) fn decrement_rr<R>(register: &mut R) -> (Bytes, Cycles)
+pub(crate) fn decrement_rr<R>(register: R) -> (Bytes, Cycles)
 where
-    R: Register<u16>,
+    R: ReadWriteRegister<u16>,
 {
-    register.set(register.get().wrapping_sub(1));
+    let decremented = register.get().wrapping_sub(1);
+    register.set(decremented);
     (1, 2)
 }
 
-pub(crate) fn add_rr_to_rr<R, R2>(
-    register: &mut R,
-    to_add: R2,
-    flags: &mut Flags,
-) -> (Bytes, Cycles)
+pub(crate) fn add_rr_to_rr<R, R2>(register: R, to_add: R2, flags: &mut Flags) -> (Bytes, Cycles)
 where
-    R: Register<u16>,
-    R2: Register<u16>,
+    R: ReadWriteRegister<u16>,
+    R2: ReadRegister<u16>,
 {
     let (result, has_overflown) = register.get().overflowing_add(to_add.get());
     let last_twelve_bits_register = register.get() & 0x0FFF;
@@ -61,13 +59,13 @@ where
     (1, 2)
 }
 
-pub(crate) fn increment_r<R>(register: &mut R, flags: &mut Flags) -> (Bytes, Cycles)
+pub(crate) fn increment_r<R>(register: R, flags: &mut Flags) -> (Bytes, Cycles)
 where
-    R: Register<u8>,
+    R: ReadWriteRegister<u8>,
 {
     let result = register.get().wrapping_add(1);
 
-    update_half_carry_8bit(register, Operation::Addition(1), flags);
+    update_half_carry_8bit(register.get(), Operation::Addition(1), flags);
     flags.zero = result == 0;
     flags.substraction = false;
 
@@ -76,13 +74,13 @@ where
     (1, 1)
 }
 
-pub(crate) fn decrement_r<R>(register: &mut R, flags: &mut Flags) -> (Bytes, Cycles)
+pub(crate) fn decrement_r<R>(register: R, flags: &mut Flags) -> (Bytes, Cycles)
 where
-    R: Register<u8>,
+    R: ReadWriteRegister<u8>,
 {
     let result = register.get().wrapping_sub(1);
 
-    update_half_carry_8bit(register, Operation::Subtraction(1), flags);
+    update_half_carry_8bit(register.get(), Operation::Subtraction(1), flags);
     flags.zero = result == 0;
     flags.substraction = false;
 
@@ -115,7 +113,7 @@ pub(crate) fn relative_jump(amount: u8, registers: &mut Registers) -> (Bytes, Cy
             .wrapping_sub(signed_amount.unsigned_abs() as u16);
     }
 
-    (0, 3)
+    (2, 3)
 }
 
 pub(crate) fn return_(registers: &mut Registers, bus: &mut Bus) -> (Bytes, Cycles) {
@@ -124,7 +122,9 @@ pub(crate) fn return_(registers: &mut Registers, bus: &mut Bus) -> (Bytes, Cycle
     let p = bus[registers.sp];
     registers.sp = registers.sp.wrapping_add(1);
 
-    registers.pc = merge_two_u8s_into_u16(p, c);
+    // We add 3 because we have to return after the call, which is 3 bytes
+    registers.pc = merge_two_u8s_into_u16(p, c).wrapping_add(3);
+
     (0, 4)
 }
 
@@ -134,11 +134,8 @@ enum Operation {
     Subtraction(u8),
 }
 
-fn update_half_carry_8bit<R>(register: &R, amount: Operation, flags: &mut Flags)
-where
-    R: Register<u8>,
-{
-    let last_four_bits = register.get() & 0x0F;
+fn update_half_carry_8bit(register_value: u8, amount: Operation, flags: &mut Flags) {
+    let last_four_bits = register_value & 0x0F;
     let result = match amount {
         Operation::Addition(number) => last_four_bits.checked_add(number),
         Operation::Subtraction(number) => last_four_bits.checked_sub(number),

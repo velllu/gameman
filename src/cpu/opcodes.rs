@@ -4,7 +4,7 @@ use crate::{
     bus::Bus,
     common::merge_two_u8s_into_u16,
     flags::Flags,
-    registers::{Register, Registers},
+    registers::{ReadRegister, ReadWriteRegister, Registers},
 };
 
 use super::{
@@ -33,9 +33,9 @@ impl Cpu {
         match opcode {
             0x00 => (1, 0), // NOP
 
-            0x01 => { (regs.b, regs.c).set(ii); (3, 3) },
-            0x11 => { (regs.d, regs.e).set(ii); (3, 3) },
-            0x21 => { (regs.h, regs.l).set(ii); (3, 3) },
+            0x01 => { (&mut regs.b, &mut regs.c).set(ii); (3, 3) },
+            0x11 => { (&mut regs.d, &mut regs.e).set(ii); (3, 3) },
+            0x21 => { (&mut regs.h, &mut regs.l).set(ii); (3, 3) },
             0x31 => { regs.sp = ii; (3, 3) },
 
             0x02 => { bus[(regs.b, regs.c).get()] = regs.a; (1, 2) },
@@ -48,9 +48,9 @@ impl Cpu {
             0x75 => { bus[(regs.h, regs.l).get()] = regs.l; (1, 2) },
             0x77 => { bus[(regs.h, regs.l).get()] = regs.a; (1, 2) },
 
-            0x03 => increment_rr(&mut (regs.b, regs.c)),
-            0x13 => increment_rr(&mut (regs.d, regs.e)),
-            0x23 => increment_rr(&mut (regs.h, regs.l)),
+            0x03 => increment_rr((&mut regs.b, &mut regs.c)),
+            0x13 => increment_rr((&mut regs.d, &mut regs.e)),
+            0x23 => increment_rr((&mut regs.h, &mut regs.l)),
             0x33 => increment_rr(&mut regs.sp),
 
             0x04 => increment_r(&mut regs.b, flags),
@@ -77,14 +77,14 @@ impl Cpu {
             0x2E => { regs.l = i; (2, 2) },
             0x3E => { regs.a = i; (2, 2) },
 
-            0x09 => add_rr_to_rr(&mut (regs.h, regs.l), (regs.b, regs.c), flags),
-            0x19 => add_rr_to_rr(&mut (regs.h, regs.l), (regs.d, regs.e), flags),
-            0x29 => add_rr_to_rr(&mut (regs.h, regs.l), (regs.h, regs.l), flags),
-            0x39 => add_rr_to_rr(&mut (regs.h, regs.l), regs.sp, flags),
+            0x09 => add_rr_to_rr((&mut regs.h, &mut regs.l), (regs.b, regs.c), flags),
+            0x19 => add_rr_to_rr((&mut regs.h, &mut regs.l), (regs.d, regs.e), flags),
+            0x29 => { let hl = (regs.h, regs.l); add_rr_to_rr((&mut regs.h, &mut regs.l), hl, flags) },
+            0x39 => add_rr_to_rr((&mut regs.h, &mut regs.l), regs.sp, flags),
 
-            0x0B => decrement_rr(&mut (regs.b, regs.c)),
-            0x1B => decrement_rr(&mut (regs.d, regs.e)),
-            0x2B => decrement_rr(&mut (regs.h, regs.l)),
+            0x0B => decrement_rr((&mut regs.b, &mut regs.c)),
+            0x1B => decrement_rr((&mut regs.d, &mut regs.e)),
+            0x2B => decrement_rr((&mut regs.h, &mut regs.l)),
             0x3B => decrement_rr(&mut regs.sp),
 
             0x18 => relative_jump(i, regs),

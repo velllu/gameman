@@ -34,40 +34,64 @@ impl Default for Registers {
     }
 }
 
-pub(crate) trait Register<T> {
+/// A read only register
+pub(crate) trait ReadRegister<T: Copy> {
     fn get(&self) -> T;
-    fn set(&mut self, data_type: T);
 }
 
-impl Register<u8> for u8 {
+/// A read and write register
+pub(crate) trait ReadWriteRegister<T> {
+    fn get(&self) -> T;
+    fn set(self, data_type: T);
+}
+
+impl ReadRegister<u8> for u8 {
     fn get(&self) -> u8 {
         *self
     }
+}
 
-    fn set(&mut self, number: u8) {
+impl ReadWriteRegister<u8> for &mut u8 {
+    fn get(&self) -> u8 {
+        (**self).get()
+    }
+
+    fn set(self, number: u8) {
         *self = number;
     }
 }
 
-impl Register<u16> for (u8, u8) {
+impl ReadRegister<u16> for (u8, u8) {
     fn get(&self) -> u16 {
         merge_two_u8s_into_u16(self.1, self.0)
     }
+}
 
-    fn set(&mut self, number: u16) {
+impl ReadWriteRegister<u16> for (&mut u8, &mut u8) {
+    fn get(&self) -> u16 {
+        (*self.1, *self.0).get()
+    }
+
+    fn set(self, number: u16) {
         let (high, low) = split_u16_into_two_u8s(number);
 
-        self.1 = high;
-        self.0 = low;
+        *self.0 = high;
+        *self.1 = low;
     }
 }
 
-impl Register<u16> for u16 {
+impl ReadRegister<u16> for u16 {
     fn get(&self) -> u16 {
         *self
     }
+}
 
-    fn set(&mut self, number: u16) {
+impl ReadWriteRegister<u16> for &mut u16 {
+    fn get(&self) -> u16 {
+        (**self).get()
+    }
+
+    fn set(self, number: u16) {
         *self = number;
     }
 }
