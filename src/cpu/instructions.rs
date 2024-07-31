@@ -65,7 +65,7 @@ where
 {
     let result = register.get().wrapping_add(1);
 
-    update_half_carry_8bit(register.get(), Operation::Addition(1), flags);
+    update_half_carry_8bit(register.get(), Operation::Inc(1), flags);
     flags.zero = result == 0;
     flags.substraction = false;
 
@@ -80,7 +80,7 @@ where
 {
     let result = register.get().wrapping_sub(1);
 
-    update_half_carry_8bit(register.get(), Operation::Subtraction(1), flags);
+    update_half_carry_8bit(register.get(), Operation::Sub(1), flags);
     flags.zero = result == 0;
     flags.substraction = false;
 
@@ -90,7 +90,9 @@ where
 }
 
 pub(crate) fn call(address: u16, registers: &mut Registers, bus: &mut Bus) -> (Bytes, Cycles) {
-    let (p, c) = split_u16_into_two_u8s(registers.pc);
+    // We add 3 because we need to push the address of the instruction next to the call,
+    // and long is 3 bytes long
+    let (p, c) = split_u16_into_two_u8s(registers.pc.wrapping_add(3));
 
     registers.sp = registers.sp.wrapping_sub(1);
     bus[registers.sp] = p;
@@ -121,9 +123,7 @@ pub(crate) fn return_(registers: &mut Registers, bus: &mut Bus) -> (Bytes, Cycle
     registers.sp = registers.sp.wrapping_add(1);
     let p = bus[registers.sp];
     registers.sp = registers.sp.wrapping_add(1);
-
-    // We add 3 because we have to return after the call, which is 3 bytes
-    registers.pc = merge_two_u8s_into_u16(p, c).wrapping_add(3);
+    registers.pc = merge_two_u8s_into_u16(p, c);
 
     (0, 4)
 }
@@ -154,24 +154,44 @@ where
     *sp = sp.wrapping_add(1);
     let high = bus[*sp];
     *sp = sp.wrapping_add(1);
-
-    // We add 3 here too
-    register.set(merge_two_u8s_into_u16(high, low).wrapping_add(3));
+    register.set(merge_two_u8s_into_u16(high, low));
 
     (1, 4)
 }
 
+pub(crate) fn load_ram_into_r_and_in<RR, R>(
+    address_register: RR,
+    register: R,
+    amount: Operation,
+    bus: &mut Bus,
+) -> (Bytes, Cycles)
+where
+    RR: ReadWriteRegister<u16>,
+    R: ReadWriteRegister<u8>,
+{
+    let address = address_register.get();
+
+    register.set(bus[address]);
+
+    address_register.set(match amount {
+        Operation::Inc(amount) => address.wrapping_add(amount as u16),
+        Operation::Sub(amount) => address.wrapping_sub(amount as u16),
+    });
+
+    (1, 2)
+}
+
 // Utilities
-enum Operation {
-    Addition(u8),
-    Subtraction(u8),
+pub(crate) enum Operation {
+    Inc(u8),
+    Sub(u8),
 }
 
 fn update_half_carry_8bit(register_value: u8, amount: Operation, flags: &mut Flags) {
     let last_four_bits = register_value & 0x0F;
     let result = match amount {
-        Operation::Addition(number) => last_four_bits.checked_add(number),
-        Operation::Subtraction(number) => last_four_bits.checked_sub(number),
+        Operation::Inc(number) => last_four_bits.checked_add(number),
+        Operation::Sub(number) => last_four_bits.checked_sub(number),
     };
 
     match result {

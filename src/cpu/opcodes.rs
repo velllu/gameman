@@ -9,8 +9,8 @@ use crate::{
 
 use super::{
     instructions::{
-        add_rr_to_rr, call, decrement_r, decrement_rr, increment_r, increment_rr, pop, push,
-        relative_jump, return_, Bytes, Cycles,
+        add_rr_to_rr, call, decrement_r, decrement_rr, increment_r, increment_rr,
+        load_ram_into_r_and_in, pop, push, relative_jump, return_, Bytes, Cycles, Operation,
     },
     Cpu,
 };
@@ -82,6 +82,12 @@ impl Cpu {
             0x29 => { let hl = (regs.h, regs.l); add_rr_to_rr((&mut regs.h, &mut regs.l), hl, flags) }, // TODO: Remove this monstrosity
             0x39 => add_rr_to_rr((&mut regs.h, &mut regs.l), regs.sp, flags),
 
+            0x0A => { regs.a = bus[(regs.b, regs.c).get()]; (1, 2) },
+            0x1A => { regs.a = bus[(regs.d, regs.e).get()]; (1, 2) },
+            0x46 => { regs.b = bus[(regs.h, regs.l).get()]; (1, 2) },
+            0x56 => { regs.d = bus[(regs.h, regs.l).get()]; (1, 2) },
+            0x66 => { regs.h = bus[(regs.h, regs.l).get()]; (1, 2) },
+
             0x0B => decrement_rr((&mut regs.b, &mut regs.c)),
             0x1B => decrement_rr((&mut regs.d, &mut regs.e)),
             0x2B => decrement_rr((&mut regs.h, &mut regs.l)),
@@ -92,6 +98,9 @@ impl Cpu {
             0x30 => if !flags.carry { relative_jump(i, regs) } else { (2, 2) },
             0x28 => if flags.zero { relative_jump(i, regs) } else { (2, 2) },
             0x38 => if flags.carry { relative_jump(i, regs) } else { (2, 2) },
+
+            0x2A => load_ram_into_r_and_in((&mut regs.h, &mut regs.l), &mut regs.a, Operation::Inc(1), bus),
+            0x3A => load_ram_into_r_and_in((&mut regs.h, &mut regs.l), &mut regs.a, Operation::Sub(1), bus),
 
             0x40 => { regs.b = regs.b; (1, 1) },
             0x41 => { regs.b = regs.c; (1, 1) },
