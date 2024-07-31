@@ -2,6 +2,7 @@
 //! - R means register
 //! - I means immediate data
 //! - RR means two byte register
+//! - RA means the a register specifically
 //! - II means two byte immediate data
 //! - RAM means an address specified by a two byte register
 
@@ -181,10 +182,47 @@ where
     (1, 2)
 }
 
+pub(crate) fn load_bitwise_into_r<R, R2>(
+    register_to_set: R2,
+    register_to_or: R,
+    bitwise_operation: BitwiseOperation,
+    flags: &mut Flags,
+) -> (Bytes, Cycles)
+where
+    R: ReadRegister<u8>,
+    R2: ReadWriteRegister<u8>,
+{
+    let result = match bitwise_operation {
+        BitwiseOperation::And => register_to_or.get() & register_to_set.get(),
+        BitwiseOperation::Or => register_to_or.get() | register_to_set.get(),
+        BitwiseOperation::Xor => register_to_or.get() ^ register_to_set.get(),
+    };
+
+    register_to_set.set(result);
+
+    flags.substraction = false;
+    flags.carry = false;
+    flags.zero = result == 0;
+
+    flags.half_carry = match bitwise_operation {
+        BitwiseOperation::And => true,
+        BitwiseOperation::Or => false,
+        BitwiseOperation::Xor => false,
+    };
+
+    (1, 1)
+}
+
 // Utilities
 pub(crate) enum Operation {
     Inc(u8),
     Sub(u8),
+}
+
+pub(crate) enum BitwiseOperation {
+    And,
+    Or,
+    Xor,
 }
 
 fn update_half_carry_8bit(register_value: u8, amount: Operation, flags: &mut Flags) {

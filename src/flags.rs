@@ -21,4 +21,17 @@ impl Flags {
             carry: true,
         }
     }
+
+    pub(crate) fn set_flags(
+        &mut self,
+        zero: bool,
+        subtraction: bool,
+        half_carry: bool,
+        carry: bool,
+    ) {
+        self.zero = zero;
+        self.substraction = subtraction;
+        self.half_carry = half_carry;
+        self.carry = carry;
+    }
 }
