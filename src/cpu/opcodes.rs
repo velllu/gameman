@@ -25,6 +25,11 @@ impl Cpu {
         regs: &mut Registers,
         bus: &mut Bus,
     ) -> (Bytes, Cycles) {
+        if self.is_cb {
+            self.is_cb = false;
+            return self.interpret_cb_opcode(opcode, flags, regs, bus);
+        }
+
         // This lambda fetches `offset` bytes from the bus
         let get_immediate_data = |offset| bus.read_from_rom(regs.pc.wrapping_add(offset));
 
@@ -153,6 +158,22 @@ impl Cpu {
             0x7D => { regs.a = regs.l; (1, 1) },
             0x7F => { regs.a = regs.a; (1, 1) },
 
+            0xA0 => load_bitwise_into_r(&mut regs.a, regs.b, BitwiseOperation::And, flags),
+            0xA1 => load_bitwise_into_r(&mut regs.a, regs.c, BitwiseOperation::And, flags),
+            0xA2 => load_bitwise_into_r(&mut regs.a, regs.d, BitwiseOperation::And, flags),
+            0xA3 => load_bitwise_into_r(&mut regs.a, regs.e, BitwiseOperation::And, flags),
+            0xA4 => load_bitwise_into_r(&mut regs.a, regs.h, BitwiseOperation::And, flags),
+            0xA5 => load_bitwise_into_r(&mut regs.a, regs.l, BitwiseOperation::And, flags),
+            0xA7 => { flags.set(regs.a == 0, false, true, false); (1, 1)  }, // and by itself will check z and set hc flags
+
+            0xA8 => load_bitwise_into_r(&mut regs.a, regs.b, BitwiseOperation::Xor, flags),
+            0xA9 => load_bitwise_into_r(&mut regs.a, regs.c, BitwiseOperation::Xor, flags),
+            0xAA => load_bitwise_into_r(&mut regs.a, regs.d, BitwiseOperation::Xor, flags),
+            0xAB => load_bitwise_into_r(&mut regs.a, regs.e, BitwiseOperation::Xor, flags),
+            0xAC => load_bitwise_into_r(&mut regs.a, regs.h, BitwiseOperation::Xor, flags),
+            0xAD => load_bitwise_into_r(&mut regs.a, regs.l, BitwiseOperation::Xor, flags),
+            0xAF => { flags.set(true, false, false, false); regs.a = 0; (1, 1)  }, // xor by itself will just set zero flag and clear register a
+
             0xC1 => pop((&mut regs.b, &mut regs.c), &mut regs.sp, bus),
             0xD1 => pop((&mut regs.d, &mut regs.e), &mut regs.sp, bus),
             0xE1 => pop((&mut regs.h, &mut regs.l), &mut regs.sp, bus),
@@ -177,27 +198,13 @@ impl Cpu {
             0xC8 => if flags.zero { return_(regs, bus) } else { (2, 2) },
             0xD8 => if flags.carry { return_(regs, bus) } else { (2, 2) },
 
+            0xCB => { self.is_cb = true; (1, 1) },
+
             0xCD => call(ii, regs, bus),
             0xC4 => if !flags.zero { call(ii, regs, bus) } else { (3, 3) },
             0xD4 => if !flags.carry { call(ii, regs, bus) } else { (3, 3) },
             0xCC => if flags.zero { call(ii, regs, bus) } else { (3, 3) },
             0xDC => if flags.carry { call(ii, regs, bus) } else { (3, 3) },
-
-            0xA0 => load_bitwise_into_r(&mut regs.a, regs.b, BitwiseOperation::And, flags),
-            0xA1 => load_bitwise_into_r(&mut regs.a, regs.c, BitwiseOperation::And, flags),
-            0xA2 => load_bitwise_into_r(&mut regs.a, regs.d, BitwiseOperation::And, flags),
-            0xA3 => load_bitwise_into_r(&mut regs.a, regs.e, BitwiseOperation::And, flags),
-            0xA4 => load_bitwise_into_r(&mut regs.a, regs.h, BitwiseOperation::And, flags),
-            0xA5 => load_bitwise_into_r(&mut regs.a, regs.l, BitwiseOperation::And, flags),
-            0xA7 => { flags.set_flags(regs.a == 0, false, true, false); (1, 1)  }, // and by itself will check z and set hc flags
-
-            0xA8 => load_bitwise_into_r(&mut regs.a, regs.b, BitwiseOperation::Xor, flags),
-            0xA9 => load_bitwise_into_r(&mut regs.a, regs.c, BitwiseOperation::Xor, flags),
-            0xAA => load_bitwise_into_r(&mut regs.a, regs.d, BitwiseOperation::Xor, flags),
-            0xAB => load_bitwise_into_r(&mut regs.a, regs.e, BitwiseOperation::Xor, flags),
-            0xAC => load_bitwise_into_r(&mut regs.a, regs.h, BitwiseOperation::Xor, flags),
-            0xAD => load_bitwise_into_r(&mut regs.a, regs.l, BitwiseOperation::Xor, flags),
-            0xAF => { flags.set_flags(true, false, false, false); regs.a = 0; (1, 1)  }, // xor by itself will just set zero flag and clear register a
 
             0xB0 => load_bitwise_into_r(&mut regs.a, regs.b, BitwiseOperation::Or, flags),
             0xB1 => load_bitwise_into_r(&mut regs.a, regs.c, BitwiseOperation::Or, flags),
@@ -205,7 +212,7 @@ impl Cpu {
             0xB3 => load_bitwise_into_r(&mut regs.a, regs.e, BitwiseOperation::Or, flags),
             0xB4 => load_bitwise_into_r(&mut regs.a, regs.h, BitwiseOperation::Or, flags),
             0xB5 => load_bitwise_into_r(&mut regs.a, regs.l, BitwiseOperation::Or, flags),
-            0xB7 => { flags.set_flags(regs.a == 0, false, false, false); (1, 1)  }, // or by itself will just check for z flag
+            0xB7 => { flags.set(regs.a == 0, false, false, false); (1, 1)  }, // or by itself will just check for z flag
 
             0xD6 => { regs.a = regs.a.wrapping_sub(i); (2, 2) },
 

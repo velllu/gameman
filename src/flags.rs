@@ -22,16 +22,16 @@ impl Flags {
         }
     }
 
-    pub(crate) fn set_flags(
-        &mut self,
-        zero: bool,
-        subtraction: bool,
-        half_carry: bool,
-        carry: bool,
-    ) {
+    pub(crate) fn set(&mut self, zero: bool, subtraction: bool, half_carry: bool, carry: bool) {
         self.zero = zero;
         self.substraction = subtraction;
         self.half_carry = half_carry;
         self.carry = carry;
+    }
+
+    pub(crate) fn set_z_s_hc(&mut self, zero: bool, subtraction: bool, half_carry: bool) {
+        self.zero = zero;
+        self.substraction = subtraction;
+        self.half_carry = half_carry;
     }
 }
