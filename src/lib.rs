@@ -1,7 +1,6 @@
 #![forbid(unsafe_code)]
 
 use bus::{Bus, BusError};
-use common::merge_two_u8s_into_u16;
 use consts::bus::ROM_SIZE;
 use cpu::Cpu;
 use flags::Flags;
