@@ -9,16 +9,6 @@ pub(crate) fn split_u16_into_two_u8s(value: u16) -> (u8, u8) {
     (first_u8, second_u8)
 }
 
-pub(crate) enum Operator {
-    Inc,
-    Sub,
-}
-
-pub(crate) enum BitwiseOperation {
-    Or,
-    Xor,
-}
-
 pub(crate) trait Bit {
     fn get_bit(&self, offset: Self) -> bool;
     fn set_bit(&mut self, offset: Self, value: bool);

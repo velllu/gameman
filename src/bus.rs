@@ -1,6 +1,6 @@
 use std::{error::Error, fmt::Display, fs::File, io::Read};
 
-use crate::consts::bus::*;
+use crate::{common::merge_two_u8s_into_u16, consts::bus::*, registers::Registers};
 
 #[derive(Debug)]
 pub enum BusError {
@@ -150,5 +150,20 @@ impl Bus {
     /// Returns the opcode at specified address
     pub fn read_from_rom(&self, pc: u16) -> u8 {
         self.rom[pc as usize]
+    }
+
+    /// Returns the byte X times after the `PC` register
+    pub(crate) fn next(&self, offset: u16, registers: &Registers) -> u8 {
+        self.read_from_rom(registers.pc.wrapping_add(offset))
+    }
+
+    /// Returns the byte after the `PC` register
+    pub(crate) fn next_one(&self, registers: &Registers) -> u8 {
+        self.next(1, registers)
+    }
+
+    /// Returns the next two bytes from the `PC` register in little endian format
+    pub(crate) fn next_two(&self, registers: &Registers) -> u16 {
+        merge_two_u8s_into_u16(self.next(2, registers), self.next(1, registers))
     }
 }

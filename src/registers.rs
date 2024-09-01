@@ -1,4 +1,7 @@
-use crate::common::{merge_two_u8s_into_u16, split_u16_into_two_u8s, Operator};
+use crate::{
+    bus::Bus,
+    common::{merge_two_u8s_into_u16, split_u16_into_two_u8s},
+};
 
 pub struct Registers {
     pub a: u8,
@@ -26,84 +29,62 @@ impl Registers {
             pc: 0x0100,
         }
     }
+
+    pub(crate) fn get_register(&self, code: u8, bus: &Bus) -> u8 {
+        match code & 0b00000111 {
+            0 => self.b,
+            1 => self.c,
+            2 => self.d,
+            3 => self.e,
+            4 => self.h,
+            5 => self.l,
+            6 => bus[merge_two_u8s_into_u16(self.h, self.l)],
+            7 => self.a,
+
+            _ => unreachable!(),
+        }
+    }
+
+    pub(crate) fn set_register(&mut self, code: u8, value: u8, bus: &mut Bus) {
+        match code & 0b00000111 {
+            0 => self.b = value,
+            1 => self.c = value,
+            2 => self.d = value,
+            3 => self.e = value,
+            4 => self.h = value,
+            5 => self.l = value,
+            6 => bus[merge_two_u8s_into_u16(self.h, self.l)] = value,
+            7 => self.a = value,
+
+            _ => unreachable!(),
+        }
+    }
+
+    pub(crate) fn get_register_couple(&self, code: u8) -> u16 {
+        match code & 0b00000011 {
+            0 => merge_two_u8s_into_u16(self.b, self.c),
+            1 => merge_two_u8s_into_u16(self.d, self.e),
+            2 => merge_two_u8s_into_u16(self.h, self.l),
+            3 => self.sp,
+
+            _ => unreachable!(),
+        }
+    }
+
+    pub(crate) fn set_register_couple(&mut self, code: u8, value: u16) {
+        match code & 0b00000011 {
+            0 => (self.b, self.c) = split_u16_into_two_u8s(value),
+            1 => (self.d, self.e) = split_u16_into_two_u8s(value),
+            2 => (self.h, self.l) = split_u16_into_two_u8s(value),
+            3 => self.sp = value,
+
+            _ => unreachable!(),
+        }
+    }
 }
 
 impl Default for Registers {
     fn default() -> Self {
         Self::new()
     }
-}
-
-pub(crate) enum OneByteRegister {
-    A,
-    B,
-    C,
-    D,
-    E,
-    H,
-    L,
-}
-
-macro_rules! set_rr {
-    ($name:ident, $first_r:ident, $second_r:ident) => {
-        pub(crate) fn $name(&mut self, value: u16) {
-            let (register1, register2) = split_u16_into_two_u8s(value);
-            self.$first_r = register1;
-            self.$second_r = register2;
-        }
-    };
-}
-
-macro_rules! get_rr {
-    ($name:ident, $first_r:ident, $second_r:ident) => {
-        pub(crate) fn $name(&self) -> u16 {
-            merge_two_u8s_into_u16(self.$first_r, self.$second_r)
-        }
-    };
-}
-
-macro_rules! increment_rr {
-    ($name:ident, $first_r:ident, $second_r:ident) => {
-        pub(crate) fn $name(&mut self, value: u16, operation: Operator) {
-            let rr = merge_two_u8s_into_u16(self.$first_r, self.$second_r);
-            let rr = match operation {
-                Operator::Inc => rr.wrapping_add(value),
-                Operator::Sub => rr.wrapping_sub(value),
-            };
-
-            let (r1, r2) = split_u16_into_two_u8s(rr);
-
-            self.$first_r = r1;
-            self.$second_r = r2;
-        }
-    };
-}
-
-impl Registers {
-    pub(crate) fn get_r(&mut self, register: OneByteRegister) -> &mut u8 {
-        match register {
-            OneByteRegister::A => &mut self.a,
-            OneByteRegister::B => &mut self.b,
-            OneByteRegister::C => &mut self.c,
-            OneByteRegister::D => &mut self.d,
-            OneByteRegister::E => &mut self.e,
-            OneByteRegister::H => &mut self.h,
-            OneByteRegister::L => &mut self.l,
-        }
-    }
-
-    // All this `set_rr()`, `get_rr()`, `increment_rr()` functions are done because we
-    // cannot have a `get_rr` as registers are stored as a one byte register
-
-    set_rr! {set_bc, b, c}
-    get_rr! {get_bc, b, c}
-    increment_rr! {increment_bc, b, c}
-
-    set_rr! {set_de, d, e}
-    get_rr! {get_de, d, e}
-    increment_rr! {increment_de, d, e}
-
-    set_rr! {set_hl, h, l}
-    get_rr! {get_hl, h, l}
-    increment_rr! {increment_hl, h, l}
 }

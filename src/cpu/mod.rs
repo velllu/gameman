@@ -1,31 +1,33 @@
-//! There are two opcode tables, one of them is prefixed with `0xCB` and one isn't.  
-//! For example, `0xCBF7` is a "cb opcode" (this is how I call it), while something like
-//! `0xC3` is just an opcode. You can find normal opcodes at `opcodes.rs` and cb opcodes
-//! at `cb_opcodes.rs`
-
-// My preferred opcode reference is: https://meganesu.github.io/generate-gb-opcodes/
-
-// You might be wondering why I did not use rust enums to represent all opcodes,
-// I originally did that, and it transforms into spaghetti code really quick, and this is
-// far more readable in my opinion, both to rust users, and to anyone that doesn't know
-// anything about rust
-
-// NAMING CONVENTIONS:
-// r -> one byte register
-// ra -> register a in particular
-// rr -> two byte register
-// ii -> the two bytes of immediate data
-// i -> the first byte of immediate data
-// ram -> a byte from ram
-
-/// The number of bytes an opcode needs, examples:
-/// - NOP - 1 byte, since it just takes the "NOP" byte, so every opcode has *at least* 1
-/// byte
-/// - LD BC, d16 - 2 bytes, since it also requires the byte after the opcode
-type Bytes = u8;
-
-/// The amount of "steps" the gameboy needs to execute a specific instruction
-type Cycles = u8;
-
-mod cb_opcodes;
+mod interrupts;
 mod opcodes;
+mod opcodes_cb;
+
+/// The number of bytes to skip after interpreting the instruction, if the instruction is
+/// 2 bytes long we will need to skip 2 bytes
+pub type Bytes = u8;
+
+/// The amounts of cycles and instruction takes
+pub type Cycles = u8;
+
+pub struct Cpu {
+    // TODO: Remove this, to make the code better. Check `interrupts.rs` for more
+    // information on why this is needed
+    pub(crate) previous_lcd: Option<bool>,
+
+    /// Wheter or not the next instruction is `0xCB` fixed instruction
+    pub(crate) is_cb: bool,
+
+    /// IME, standing for "Interrupt Master Enable" is basically a switch on whether
+    /// interrupts should be handled or not
+    pub ime: bool,
+}
+
+impl Cpu {
+    pub(crate) fn new() -> Self {
+        Self {
+            previous_lcd: None,
+            is_cb: false,
+            ime: false,
+        }
+    }
+}
