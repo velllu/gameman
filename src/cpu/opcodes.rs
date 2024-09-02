@@ -1,6 +1,11 @@
 #![warn(clippy::match_same_arms)]
 
-use crate::{bus::Bus, flags::Flags, registers::Registers};
+use crate::{
+    bus::Bus,
+    common::{merge_two_u8s_into_u16, split_u16_into_two_u8s},
+    flags::Flags,
+    registers::Registers,
+};
 
 use super::{Bytes, Cpu, Cycles};
 
@@ -28,10 +33,27 @@ impl Cpu {
                 (3, 3)
             }
 
+            // Instruction `LD (rr+/-), register A` - 00rr0010
+            // Copy register A to address specified by register r (with increments)
+            0x02 | 0x12 | 0x22 | 0x32 => {
+                let address = regs.get_register_couple_with_increments(opcode >> 4);
+                bus[address] = regs.a;
+
+                (1, 2)
+            }
+
             // Instruction `INC rr` - 00rr0011
             // Increments by one given register couple
             0x03 | 0x13 | 0x23 | 0x33 => {
                 let new_value = regs.get_register_couple(opcode >> 4).wrapping_add(1);
+                regs.set_register_couple(opcode >> 4, new_value);
+                (1, 2)
+            }
+
+            // Instruction `DEC rr` - 00rr0011
+            // Decrements by one given register couple
+            0x0B | 0x1B | 0x2B | 0x3B => {
+                let new_value = regs.get_register_couple(opcode >> 4).wrapping_sub(1);
                 regs.set_register_couple(opcode >> 4, new_value);
                 (1, 2)
             }
@@ -62,6 +84,61 @@ impl Cpu {
                 regs.set_register(opcode >> 3, bus.next_one(regs), bus);
 
                 (2, 2)
+            }
+
+            // Instruction `LD (immediate data), SP` - 00001000
+            // Load the lower part of SP into immediate data address and the higher part
+            // in the next cell
+            0x08 => {
+                let (s, p) = split_u16_into_two_u8s(regs.sp);
+                let address = bus.next_two(regs);
+
+                bus[address] = p;
+                bus[address.wrapping_add(1)] = s;
+
+                (3, 5)
+            }
+
+            // Instruction `ADD HL, rr` - 00rr1001
+            // Add given register to register HL. TODO: Handle carry flag
+            0x09 | 0x19 | 0x29 | 0x39 => {
+                let register_r = regs.get_register_couple(opcode >> 4);
+                let register_hl = merge_two_u8s_into_u16(regs.h, regs.l);
+                (regs.h, regs.l) = split_u16_into_two_u8s(register_hl.wrapping_add(register_r));
+
+                (1, 2)
+            }
+
+            // Instruction `LD register A, (rr+/-)` - 00rr0010
+            // Copy register r (with increments) to register A
+            0x0A | 0x1A | 0x2A | 0x3A => {
+                let address = regs.get_register_couple_with_increments(opcode >> 4);
+                regs.a = bus[address];
+
+                (1, 2)
+            }
+
+            // Instruction `JR immediate data` - 00011000
+            // Convert immediate data to signed 8 bit number and add it to the pc
+            0x18 => {
+                let jump_amount = bus.next_one(regs) as i8;
+                add_i8_to_u16(&mut regs.pc, jump_amount);
+
+                (2, 2)
+            }
+
+            // Instruction `JR condition, immediate data` - 001cc000
+            // Convert immediate data to signed 8 bit number and add it to the pc if
+            // condition applies
+            0x20 | 0x28 | 0x30 | 0x38 => {
+                if flags.is_condition_valid(opcode >> 3) {
+                    let jump_amount = bus.next_one(regs) as i8;
+                    add_i8_to_u16(&mut regs.pc, jump_amount);
+
+                    (2, 3)
+                } else {
+                    (2, 2)
+                }
             }
 
             // Instruction Halt
@@ -182,4 +259,11 @@ impl Cpu {
             _ => panic!("Unimplemented opcode: {:x}", opcode),
         }
     }
+}
+
+fn add_i8_to_u16(u16: &mut u16, i8: i8) {
+    *u16 = match i8 >= 0 {
+        true => u16.wrapping_add(i8 as u16),
+        false => u16.wrapping_sub(i8.unsigned_abs() as u16),
+    };
 }

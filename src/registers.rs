@@ -71,6 +71,33 @@ impl Registers {
         }
     }
 
+    /// Cases:
+    /// - 0: Registers BC
+    /// - 1: Registers DE
+    /// - 2: Registers HL, and increment hl
+    /// - 3: Registers HL, and decrement hl
+    pub(crate) fn get_register_couple_with_increments(&mut self, code: u8) -> u16 {
+        match code & 0b00000011 {
+            0 => merge_two_u8s_into_u16(self.b, self.c),
+            1 => merge_two_u8s_into_u16(self.d, self.e),
+
+            2 => {
+                let hl = merge_two_u8s_into_u16(self.h, self.l);
+                (self.h, self.l) = split_u16_into_two_u8s(hl.wrapping_add(1));
+                hl
+            }
+
+            3 => {
+                let hl = merge_two_u8s_into_u16(self.h, self.l);
+                (self.h, self.l) = split_u16_into_two_u8s(hl.wrapping_sub(1));
+                hl
+            }
+
+            _ => unreachable!(),
+        }
+    }
+
+    pub(crate) const HL: u8 = 2;
     pub(crate) fn set_register_couple(&mut self, code: u8, value: u16) {
         match code & 0b00000011 {
             0 => (self.b, self.c) = split_u16_into_two_u8s(value),
