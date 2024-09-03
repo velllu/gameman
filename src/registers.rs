@@ -1,6 +1,7 @@
 use crate::{
     bus::Bus,
     common::{merge_two_u8s_into_u16, split_u16_into_two_u8s},
+    flags::Flags,
 };
 
 pub struct Registers {
@@ -97,7 +98,37 @@ impl Registers {
         }
     }
 
-    pub(crate) const HL: u8 = 2;
+    pub(crate) fn get_register_couple_with_flags(&self, code: u8, flags: &Flags) -> u16 {
+        match code & 0b00000011 {
+            0 => merge_two_u8s_into_u16(self.b, self.c),
+            1 => merge_two_u8s_into_u16(self.d, self.e),
+            2 => merge_two_u8s_into_u16(self.h, self.l),
+            3 => merge_two_u8s_into_u16(self.a, flags.get_byte()),
+
+            _ => unreachable!(),
+        }
+    }
+
+    pub(crate) fn set_register_couple_with_flags(
+        &mut self,
+        code: u8,
+        value: u16,
+        flags: &mut Flags,
+    ) {
+        match code & 0b00000011 {
+            0 => (self.b, self.c) = split_u16_into_two_u8s(value),
+            1 => (self.d, self.e) = split_u16_into_two_u8s(value),
+            2 => (self.h, self.l) = split_u16_into_two_u8s(value),
+            3 => {
+                let (a, flag) = split_u16_into_two_u8s(value);
+                self.a = a;
+                flags.set_from_byte(flag);
+            }
+
+            _ => unreachable!(),
+        }
+    }
+
     pub(crate) fn set_register_couple(&mut self, code: u8, value: u16) {
         match code & 0b00000011 {
             0 => (self.b, self.c) = split_u16_into_two_u8s(value),

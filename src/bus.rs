@@ -164,6 +164,6 @@ impl Bus {
 
     /// Returns the next two bytes from the `PC` register in little endian format
     pub(crate) fn next_two(&self, registers: &Registers) -> u16 {
-        merge_two_u8s_into_u16(self.next(2, registers), self.next(1, registers))
+        merge_two_u8s_into_u16(self.next(3, registers), self.next(2, registers))
     }
 }

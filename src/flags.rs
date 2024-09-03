@@ -1,3 +1,5 @@
+use crate::common::Bit;
+
 pub struct Flags {
     /// This is set when the result is zero
     pub zero: bool,
@@ -30,5 +32,23 @@ impl Flags {
             3 => self.carry,
             _ => unreachable!(),
         }
+    }
+
+    pub(crate) fn get_byte(&self) -> u8 {
+        let mut byte = 0;
+
+        byte |= (self.zero as u8) << 7;
+        byte |= (self.substraction as u8) << 6;
+        byte |= (self.half_carry as u8) << 5;
+        byte |= (self.carry as u8) << 4;
+
+        byte
+    }
+
+    pub(crate) fn set_from_byte(&mut self, byte: u8) {
+        self.zero = byte.get_bit(7);
+        self.substraction = byte.get_bit(6);
+        self.half_carry = byte.get_bit(5);
+        self.carry = byte.get_bit(4);
     }
 }

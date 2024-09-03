@@ -179,6 +179,92 @@ impl Cpu {
                 (1, 1)
             }
 
+            // Instruction `RET condition` - 110cc000
+            // Like instruction ret but only if condition applies
+            0xC0 | 0xC8 | 0xD0 | 0xD8 => {
+                if flags.is_condition_valid(opcode >> 3) {
+                    let c = bus[regs.sp];
+                    regs.sp = regs.sp.wrapping_add(1);
+                    let p = bus[regs.sp];
+                    regs.sp = regs.sp.wrapping_add(1);
+                    regs.pc = merge_two_u8s_into_u16(p, c);
+
+                    (0, 5)
+                } else {
+                    (0, 2)
+                }
+            }
+
+            // Instruction `POP rrf` - 11rr0001
+            0xC1 | 0xD1 | 0xE1 | 0xF1 => {
+                let low = bus[regs.sp];
+                regs.sp = regs.sp.wrapping_add(1);
+                let high = bus[regs.sp];
+                regs.sp = regs.sp.wrapping_add(1);
+
+                let popped_value = merge_two_u8s_into_u16(high, low);
+                regs.set_register_couple_with_flags(opcode >> 4, popped_value, flags);
+
+                (1, 3)
+            }
+
+            // Instruction `JP condition, immediate data` - 110cc010
+            // Sets pc to immediate data if given condition is valid
+            0xC2 | 0xCA | 0xD2 | 0xDA => {
+                if flags.is_condition_valid(opcode >> 3) {
+                    let (p, c) = split_u16_into_two_u8s(regs.pc.wrapping_add(3));
+                    let immediate_data = bus.next_two(regs);
+
+                    regs.sp = regs.sp.wrapping_sub(1);
+                    bus[regs.sp] = p;
+                    regs.sp = regs.sp.wrapping_sub(1);
+                    bus[regs.sp] = c;
+                    regs.pc = immediate_data;
+
+                    (0, 6)
+                } else {
+                    (0, 3)
+                }
+            }
+
+            // Instruction `JP immediate data` - 11000011
+            // Sets pc to immediate data
+            0xC3 => {
+                let immediate_data = bus.next_two(regs);
+                regs.pc = immediate_data;
+
+                (0, 4)
+            }
+
+            // Instruction `CALL condition, immediate data`
+            // Like the call instruction but only if the condition is valid
+            0xC4 | 0xCC | 0xD4 | 0xDC => {
+                if flags.is_condition_valid(opcode >> 3) {
+                    let jump_amount = bus.next_one(regs) as i8;
+                    add_i8_to_u16(&mut regs.pc, jump_amount);
+
+                    (0, 4)
+                } else {
+                    (0, 3)
+                }
+            }
+
+            // Instruction `PUSH rrf` - 11rr0101
+            // Subtract one to sp, store high part of the given register (with flags) at
+            // address sp, subtract one to sp again, store low part of the given register
+            // at address sp again
+            0xC5 | 0xD5 | 0xE5 | 0xF5 => {
+                let (high, low) =
+                    split_u16_into_two_u8s(regs.get_register_couple_with_flags(opcode >> 4, flags));
+
+                regs.sp = regs.sp.wrapping_sub(1);
+                bus[regs.sp] = high;
+                regs.sp = regs.sp.wrapping_sub(1);
+                bus[regs.sp] = low;
+
+                (1, 4)
+            }
+
             // Instruction `operation immediate_data` - 11ooo110
             // Do operation "o" on immediate data byte and register A, store result in
             // register A
@@ -193,8 +279,78 @@ impl Cpu {
                 (2, 2)
             }
 
+            // Instruction `RET` - 11001001
+            // Load address sp into lower part of pc, decrement sp, load address sp into
+            // higher part of pc, and decrement sp again
+            0xC9 => {
+                let c = bus[regs.sp];
+                regs.sp = regs.sp.wrapping_add(1);
+                let p = bus[regs.sp];
+                regs.sp = regs.sp.wrapping_add(1);
+                regs.pc = merge_two_u8s_into_u16(p, c);
+
+                (0, 4)
+            }
+
+            // Instruction `CB`
+            0xCB => {
+                self.is_cb = true;
+                (1, 1)
+            }
+
+            // Instruction `CALL immediate data` - 11001101
+            // Decrement sp by one, load high part of pc into address sp, decrement sp
+            // again, load low part of pc into address sp, finally, load immediate data
+            // into pc. Note: Increment the pc by 3 before pushing because it needs to be
+            // the pc after the call instruction which lasts 3 bytes
+            0xCD => {
+                let (p, c) = split_u16_into_two_u8s(regs.pc.wrapping_add(3));
+                let immediate_data = bus.next_two(regs);
+
+                regs.sp = regs.sp.wrapping_sub(1);
+                bus[regs.sp] = p;
+                regs.sp = regs.sp.wrapping_sub(1);
+                bus[regs.sp] = c;
+                regs.pc = immediate_data;
+
+                (3, 6)
+            }
+
+            // Instruction `LD io address, register A` - 11100000
+            // Loads register a at address specified by immediate data with an offset of
+            // `0xFF`
+            0xE0 => {
+                let address = 0xFF00 | (bus.next_one(regs) as u16);
+                bus[address] = regs.a;
+
+                (2, 3)
+            }
+
+            // Instruction `LD register A, io address` - 11100000
+            // Loads address specified by immediate data with an offset of `0xFF` into
+            // register A
+            0xF0 => {
+                let address = 0xFF00 | (bus.next_one(regs) as u16);
+                regs.a = bus[address];
+
+                (2, 3)
+            }
+
+            // Disable Interrupt Master Enable flag
+            0xF3 => {
+                self.ime = false;
+                (1, 1)
+            }
+
+            // Enable Interrupt Master Enable flag
+            0xFB => {
+                self.ime = true;
+                (1, 1)
+            }
+
             // Instruction `CP immediate data` - 11111110
-            // Subtract immediate data from register A, update the flags, but dump the result
+            // Subtract immediate data from register A, update the flags, but dump the
+            // result
             0xFE => {
                 let immediate_data = bus.next_one(regs);
                 let (result, has_overflown) = regs.a.overflowing_sub(immediate_data);
