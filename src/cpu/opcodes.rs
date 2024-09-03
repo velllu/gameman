@@ -154,98 +154,21 @@ impl Cpu {
                 (1, 1)
             }
 
-            // Instruction `ADD r` - 10000rrr
-            // Adds register r to register A
-            0x80..=0x87 => {
-                let (result, has_overflown) =
-                    regs.a.overflowing_add(regs.get_register(opcode, bus));
+            // Instructions `operation r` - 10ooorrr
+            // Do operation "o" on register r and register A, store result in register A
+            0x80..=0xB7 => {
+                let register_r = regs.get_register(opcode, bus);
+                let (result, carry) = do_operation(opcode >> 3, regs.a, register_r, flags);
 
                 regs.a = result;
                 flags.zero = result == 0;
-                flags.carry = has_overflown;
-
-                (1, 1)
-            }
-
-            // Instruction `ADDC r` - 10001rrr
-            // Adds register r to register A and add carry flag
-            0x88..=0x8F => {
-                let (result, has_overflown) = regs.a.overflowing_add(
-                    regs.get_register(opcode, bus)
-                        .wrapping_add(flags.carry as u8),
-                );
-
-                regs.a = result;
-                flags.zero = result == 0;
-                flags.carry = has_overflown;
-
-                (1, 1)
-            }
-
-            // Instruction `SUB r` - 10000rrr
-            // Subtracts register A from register r
-            0x90..=0x97 => {
-                let (result, has_overflown) =
-                    regs.a.overflowing_sub(regs.get_register(opcode, bus));
-
-                regs.a = result;
-                flags.zero = result == 0;
-                flags.carry = has_overflown;
-
-                (1, 1)
-            }
-
-            // Instruction `SUBC r` - 10001rrr
-            // Subtracts register A and the carry flag from register r
-            0x98..=0x9F => {
-                let (result, has_overflown) = regs.a.overflowing_sub(
-                    regs.get_register(opcode, bus)
-                        .wrapping_add(flags.carry as u8),
-                );
-
-                regs.a = result;
-                flags.zero = result == 0;
-                flags.carry = has_overflown;
-
-                (1, 1)
-            }
-
-            // Instruction `AND r` - 10100rrr
-            // Store the result of a logical and between register A and register R into
-            // register A and set carry flag to 0
-            0xA0..=0xA7 => {
-                regs.a = regs.a & regs.get_register(opcode, bus);
-                flags.zero = regs.a == 0;
-                flags.carry = false;
-
-                (1, 1)
-            }
-
-            // Instruction `XOR r` - 10101rrr
-            // Store the result of a logical xor between register A and register R into
-            // register A and set carry flag to 0
-            0xA8..=0xAF => {
-                regs.a = regs.a ^ regs.get_register(opcode, bus);
-                flags.zero = regs.a == 0;
-                flags.carry = false;
-
-                (1, 1)
-            }
-
-            // Instruction `XOR r` - 10110rrr
-            // Store the result of a logical or between register A and register R into
-            // register A and set carry flag to 0
-            0xB0..=0xB7 => {
-                regs.a = regs.a | regs.get_register(opcode, bus);
-                flags.zero = regs.a == 0;
-                flags.carry = false;
+                flags.carry = carry;
 
                 (1, 1)
             }
 
             // Instruction `CP r` - 10111rrr
-            // This is like the `SUB r` instruction except the register a isn't actually
-            // changed
+            // Subtract register r from register A, update the flags, but dump the result
             0xB8..=0xBF => {
                 let (result, has_overflown) =
                     regs.a.overflowing_sub(regs.get_register(opcode, bus));
@@ -254,6 +177,32 @@ impl Cpu {
                 flags.carry = has_overflown;
 
                 (1, 1)
+            }
+
+            // Instruction `operation immediate_data` - 11ooo110
+            // Do operation "o" on immediate data byte and register A, store result in
+            // register A
+            0xC6 | 0xCE | 0xD6 | 0xDE | 0xE6 | 0xEE | 0xF6 => {
+                let immediate_data = bus.next_one(regs);
+                let (result, carry) = do_operation(opcode >> 3, regs.a, immediate_data, flags);
+
+                regs.a = result;
+                flags.zero = result == 0;
+                flags.carry = carry;
+
+                (2, 2)
+            }
+
+            // Instruction `CP immediate data` - 11111110
+            // Subtract immediate data from register A, update the flags, but dump the result
+            0xFE => {
+                let immediate_data = bus.next_one(regs);
+                let (result, has_overflown) = regs.a.overflowing_sub(immediate_data);
+
+                flags.zero = result == 0;
+                flags.carry = has_overflown;
+
+                (2, 2)
             }
 
             _ => panic!("Unimplemented opcode: {:x}", opcode),
@@ -266,4 +215,25 @@ fn add_i8_to_u16(u16: &mut u16, i8: i8) {
         true => u16.wrapping_add(i8 as u16),
         false => u16.wrapping_sub(i8.unsigned_abs() as u16),
     };
+}
+
+/// Cases:
+/// - 0: num1 + num2
+/// - 1: num1 + num2 + carry flag
+/// - 2: num1 - num2
+/// - 3: num1 - num2 - carry flag
+/// - 4: num1 & num2
+/// - 5: num1 ^ num2
+/// - 6: num1 | num2
+fn do_operation(operation_num: u8, num1: u8, num2: u8, flags: &Flags) -> (u8, bool) {
+    match operation_num & 0b00000111 {
+        0 => num1.overflowing_add(num2),
+        1 => num1.overflowing_add(num2.wrapping_add(flags.carry as u8)),
+        2 => num1.overflowing_sub(num2),
+        3 => num1.overflowing_sub(num2.wrapping_sub(flags.carry as u8)),
+        4 => (num1 & num2, false),
+        5 => (num1 ^ num2, false),
+        6 => (num1 | num2, false),
+        _ => unreachable!(),
+    }
 }
