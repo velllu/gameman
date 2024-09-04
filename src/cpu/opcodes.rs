@@ -9,6 +9,11 @@ use crate::{
 
 use super::{Bytes, Cpu, Cycles};
 
+pub(crate) const CALL: u8 = 0xCD;
+pub(crate) const JUMP: u8 = 0xC3;
+pub(crate) const RELATIVE_JUMP: u8 = 0x18;
+pub(crate) const RET: u8 = 0xC9;
+
 impl Cpu {
     pub fn interpret_opcode(
         &mut self,
@@ -17,11 +22,6 @@ impl Cpu {
         regs: &mut Registers,
         bus: &mut Bus,
     ) -> (Bytes, Cycles) {
-        if self.is_cb {
-            self.is_cb = false;
-            return self.interpret_cb_opcode(opcode, flags, regs, bus);
-        }
-
         // TODO: Fix timing on instruction with register `6`, they should have a clock more
         match opcode {
             0x00 => (1, 0),
@@ -132,9 +132,7 @@ impl Cpu {
             // condition applies
             0x20 | 0x28 | 0x30 | 0x38 => {
                 if flags.is_condition_valid(opcode >> 3) {
-                    let jump_amount = bus.next_one(regs) as i8;
-                    add_i8_to_u16(&mut regs.pc, jump_amount);
-
+                    self.interpret_opcode(RELATIVE_JUMP, flags, regs, bus);
                     (2, 3)
                 } else {
                     (2, 2)
@@ -183,12 +181,7 @@ impl Cpu {
             // Like instruction ret but only if condition applies
             0xC0 | 0xC8 | 0xD0 | 0xD8 => {
                 if flags.is_condition_valid(opcode >> 3) {
-                    let c = bus[regs.sp];
-                    regs.sp = regs.sp.wrapping_add(1);
-                    let p = bus[regs.sp];
-                    regs.sp = regs.sp.wrapping_add(1);
-                    regs.pc = merge_two_u8s_into_u16(p, c);
-
+                    self.interpret_opcode(RET, flags, regs, bus);
                     (0, 5)
                 } else {
                     (0, 2)
@@ -212,15 +205,7 @@ impl Cpu {
             // Sets pc to immediate data if given condition is valid
             0xC2 | 0xCA | 0xD2 | 0xDA => {
                 if flags.is_condition_valid(opcode >> 3) {
-                    let (p, c) = split_u16_into_two_u8s(regs.pc.wrapping_add(3));
-                    let immediate_data = bus.next_two(regs);
-
-                    regs.sp = regs.sp.wrapping_sub(1);
-                    bus[regs.sp] = p;
-                    regs.sp = regs.sp.wrapping_sub(1);
-                    bus[regs.sp] = c;
-                    regs.pc = immediate_data;
-
+                    self.interpret_opcode(JUMP, flags, regs, bus);
                     (0, 6)
                 } else {
                     (0, 3)
@@ -240,15 +225,7 @@ impl Cpu {
             // Like the call instruction but only if the condition is valid
             0xC4 | 0xCC | 0xD4 | 0xDC => {
                 if flags.is_condition_valid(opcode >> 3) {
-                    let (p, c) = split_u16_into_two_u8s(regs.pc.wrapping_add(3));
-                    let immediate_data = bus.next_two(regs);
-
-                    regs.sp = regs.sp.wrapping_sub(1);
-                    bus[regs.sp] = p;
-                    regs.sp = regs.sp.wrapping_sub(1);
-                    bus[regs.sp] = c;
-                    regs.pc = immediate_data;
-
+                    self.interpret_opcode(CALL, flags, regs, bus);
                     (0, 4)
                 } else {
                     (0, 3)
@@ -300,8 +277,10 @@ impl Cpu {
 
             // Instruction `CB`
             0xCB => {
-                self.is_cb = true;
-                (1, 1)
+                let next_opcode = bus.next_one(regs);
+                let (bytes, cycles) = self.interpret_cb_opcode(next_opcode, flags, regs, bus);
+
+                (bytes + 1, cycles + 1)
             }
 
             // Instruction `CALL immediate data` - 11001101

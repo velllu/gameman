@@ -60,8 +60,7 @@ impl Cpu {
             Interrupt::Stat => 0x48,
         };
 
-        // TODO: There are three separate equal call instructions, make this a
-        // function
+        // This is like the call instruction but we don't subtract three
         let (p, c) = split_u16_into_two_u8s(registers.pc);
         registers.sp = registers.sp.wrapping_sub(1);
         bus[registers.sp] = p;
