@@ -322,6 +322,21 @@ impl Cpu {
                 (0, 6)
             }
 
+            // Instruction `RETI` - 11011001
+            // Like the `RET` instruction but Interrupt Master Enable flag is set to true
+            // TODO: Replace this with a return function since we already have three of
+            // this
+            0xD9 => {
+                let c = bus[regs.sp];
+                regs.sp = regs.sp.wrapping_add(1);
+                let p = bus[regs.sp];
+                regs.sp = regs.sp.wrapping_add(1);
+                regs.pc = merge_two_u8s_into_u16(p, c);
+                self.ime = true;
+
+                (1, 4)
+            }
+
             // Instruction `LD io address, register A` - 11100000
             // Loads register a at address specified by immediate data with an offset of
             // `0xFF`
@@ -330,6 +345,14 @@ impl Cpu {
                 bus[address] = regs.a;
 
                 (2, 3)
+            }
+
+            // Instruction `JP HL` - 11101001
+            // Sets pc to register HL
+            0xE9 => {
+                regs.pc = merge_two_u8s_into_u16(regs.h, regs.l);
+
+                (0, 1)
             }
 
             // Instruction `LD register A, io address` - 11100000
