@@ -65,7 +65,7 @@ impl GameBoy {
 
     /// Parse and run the next opcode
     pub fn step(&mut self) {
-        let opcode = self.bus.next_one(&self.registers);
+        let opcode = self.bus.next(0, &self.registers);
 
         // CPU - Opcodes
         let (bytes, cycles) =
@@ -75,7 +75,8 @@ impl GameBoy {
         self.registers.pc = self.registers.pc.wrapping_add(bytes as u16);
 
         // CPU - Interrupts
-        self.cpu.execute_interrupts(&mut self.bus);
+        self.cpu
+            .execute_interrupts(&mut self.registers, &mut self.bus);
 
         // GPU
         for _ in 0..(cycles * 4) {

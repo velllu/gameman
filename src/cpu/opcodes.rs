@@ -24,7 +24,7 @@ impl Cpu {
 
         // TODO: Fix timing on instruction with register `6`, they should have a clock more
         match opcode {
-            0x00 => (0, 0),
+            0x00 => (1, 0),
 
             // Instruction `LD rr, immediate data` - 00rr0001
             // Loads immediate data into given register couple
@@ -240,8 +240,14 @@ impl Cpu {
             // Like the call instruction but only if the condition is valid
             0xC4 | 0xCC | 0xD4 | 0xDC => {
                 if flags.is_condition_valid(opcode >> 3) {
-                    let jump_amount = bus.next_one(regs) as i8;
-                    add_i8_to_u16(&mut regs.pc, jump_amount);
+                    let (p, c) = split_u16_into_two_u8s(regs.pc.wrapping_add(3));
+                    let immediate_data = bus.next_two(regs);
+
+                    regs.sp = regs.sp.wrapping_sub(1);
+                    bus[regs.sp] = p;
+                    regs.sp = regs.sp.wrapping_sub(1);
+                    bus[regs.sp] = c;
+                    regs.pc = immediate_data;
 
                     (0, 4)
                 } else {
@@ -313,7 +319,7 @@ impl Cpu {
                 bus[regs.sp] = c;
                 regs.pc = immediate_data;
 
-                (3, 6)
+                (0, 6)
             }
 
             // Instruction `LD io address, register A` - 11100000

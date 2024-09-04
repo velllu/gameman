@@ -1,7 +1,8 @@
 use crate::{
     bus::Bus,
-    common::Bit,
+    common::{split_u16_into_two_u8s, Bit},
     consts::gpu::{IE, IF, LY, LYC, STAT},
+    registers::Registers,
 };
 
 use super::Cpu;
@@ -18,7 +19,7 @@ pub enum Interrupt {
 }
 
 impl Cpu {
-    pub(crate) fn execute_interrupts(&mut self, bus: &mut Bus) {
+    pub(crate) fn execute_interrupts(&mut self, registers: &mut Registers, bus: &mut Bus) {
         if !self.ime {
             return;
         }
@@ -30,15 +31,19 @@ impl Cpu {
         // previously off
         if let Some(is_previous_lcd_enabled) = self.previous_lcd {
             if is_lcd_enabled && !is_previous_lcd_enabled {
-                self.execute_interrupt(Interrupt::Stat, bus);
+                self.execute_interrupt(Interrupt::Stat, registers, bus);
             }
         }
 
         self.previous_lcd = Some(is_lcd_enabled);
     }
 
-    #[allow(unused)]
-    fn execute_interrupt(&mut self, interrupt: Interrupt, bus: &mut Bus) {
+    fn execute_interrupt(
+        &mut self,
+        interrupt: Interrupt,
+        registers: &mut Registers,
+        bus: &mut Bus,
+    ) {
         // The bit corresponding to the correct interrupt, both in Interrupt Enable, and
         // Interrupt Flag bytes
         let if_bit: u8 = match interrupt {
@@ -55,8 +60,14 @@ impl Cpu {
             Interrupt::Stat => 0x48,
         };
 
-        // TODO: Add this back
-        // self.call(return_address, false);
+        // TODO: There are three separate equal call instructions, make this a
+        // function
+        let (p, c) = split_u16_into_two_u8s(registers.pc);
+        registers.sp = registers.sp.wrapping_sub(1);
+        bus[registers.sp] = p;
+        registers.sp = registers.sp.wrapping_sub(1);
+        bus[registers.sp] = c;
+        registers.pc = return_address;
 
         let mut input_flags = bus[IF];
         input_flags.set_bit(if_bit, false);
