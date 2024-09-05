@@ -11,6 +11,19 @@ impl Cpu {
         bus: &mut Bus,
     ) -> (Bytes, Cycles) {
         match opcode {
+            // Instruction `SWAP r` - 00110rrr
+            // Swap high four bits with low four bits
+            0x30..=0x37 => {
+                let register_r = regs.get_register(opcode, bus);
+                let high = register_r >> 4;
+                let low = register_r << 4;
+                let new_value = high | low;
+
+                regs.set_register(opcode, new_value, bus);
+
+                (1, 1)
+            }
+
             // Instruction `BIT n, r` - 01nnnrrr
             // Set z flag to Nth bit of register R
             0x40..=0x7F => {

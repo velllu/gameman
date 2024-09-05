@@ -139,6 +139,14 @@ impl Cpu {
                 }
             }
 
+            // Instruction `CPL` - 00101111
+            // Flip the bits of register A
+            0x2F => {
+                regs.a = !regs.a;
+
+                (1, 1)
+            }
+
             // Instruction Halt
             // This is in the middle of the ld instructions, TODO: implement this fully
             0x76 => (0, 1),
@@ -184,7 +192,7 @@ impl Cpu {
                     self.interpret_opcode(RET, flags, regs, bus);
                     (0, 5)
                 } else {
-                    (0, 2)
+                    (1, 2)
                 }
             }
 
@@ -208,7 +216,7 @@ impl Cpu {
                     self.interpret_opcode(JUMP, flags, regs, bus);
                     (0, 6)
                 } else {
-                    (0, 3)
+                    (3, 3)
                 }
             }
 
@@ -228,7 +236,7 @@ impl Cpu {
                     self.interpret_opcode(CALL, flags, regs, bus);
                     (0, 4)
                 } else {
-                    (0, 3)
+                    (3, 3)
                 }
             }
 
@@ -301,6 +309,25 @@ impl Cpu {
                 (0, 6)
             }
 
+            // Instruction `RST n` - 11nnn111
+            // Push the program counter, and load into pc, then set the program counter to
+            // n multiplied by eight
+            0xC7 | 0xCF | 0xD7 | 0xDF | 0xE7 | 0xEF | 0xF7 | 0xFF => {
+                // Pushing, NOTE: we add one because we push the pc of the next
+                // instruction
+                let (p, c) = split_u16_into_two_u8s(regs.pc.wrapping_add(1));
+                regs.sp = regs.sp.wrapping_sub(1);
+                bus[regs.sp] = p;
+                regs.sp = regs.sp.wrapping_sub(1);
+                bus[regs.sp] = c;
+
+                // Jump table
+                let n = (opcode >> 3) & 0b00000111;
+                regs.pc = (n * 8) as u16;
+
+                (0, 4)
+            }
+
             // Instruction `RETI` - 11011001
             // Like the `RET` instruction but Interrupt Master Enable flag is set to true
             // TODO: Replace this with a return function since we already have three of
@@ -326,12 +353,30 @@ impl Cpu {
                 (2, 3)
             }
 
+            // Instruction `LD (register C), A` - 11100010
+            // Loads register a at address specified by register C with an offset of `0xFF`
+            0xE2 => {
+                let address = 0xFF00 | (regs.c as u16);
+                bus[address] = regs.a;
+
+                (1, 2)
+            }
+
             // Instruction `JP HL` - 11101001
             // Sets pc to register HL
             0xE9 => {
                 regs.pc = merge_two_u8s_into_u16(regs.h, regs.l);
 
                 (0, 1)
+            }
+
+            // Instruction `LD (immediate data), register A` - 11101010
+            // Load register A at address specified by immediate data
+            0xEA => {
+                let immediate_data = bus.next_two(regs);
+                bus[immediate_data] = regs.a;
+
+                (3, 4)
             }
 
             // Instruction `LD register A, io address` - 11100000
@@ -344,10 +389,29 @@ impl Cpu {
                 (2, 3)
             }
 
+            // Instruction `LD register A, io address` - 11110010
+            // Loads address specified by register C with an offset of `0xFF` into
+            // register A
+            0xF2 => {
+                let address = 0xFF00 | (regs.c as u16);
+                regs.a = bus[address];
+
+                (1, 2)
+            }
+
             // Disable Interrupt Master Enable flag
             0xF3 => {
                 self.ime = false;
                 (1, 1)
+            }
+
+            // Instruction `LD register A, (immediate data)` - 11111010
+            // Load specified address into register A
+            0xFA => {
+                let immediate_data = bus.next_two(regs);
+                regs.a = bus[immediate_data];
+
+                (3, 4)
             }
 
             // Enable Interrupt Master Enable flag
