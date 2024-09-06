@@ -73,19 +73,19 @@ fn pretty_print_gameboy(gameboy: &GameBoy) -> Result<(), io::Error> {
     writeln!(
         lock,
         "  First byte of immediate data: {}",
-        hex_to_string(gameboy.bus.read_from_rom(gameboy.registers.pc + 1))
+        hex_to_string(gameboy.bus[gameboy.registers.pc + 1])
     )?;
 
     writeln!(
         lock,
         "  Second byte of immediate data: {}",
-        hex_to_string(gameboy.bus.read_from_rom(gameboy.registers.pc + 2))
+        hex_to_string(gameboy.bus[gameboy.registers.pc + 2])
     )?;
 
     writeln!(
         lock,
         "  Current opcode: {}",
-        hex_to_string(gameboy.bus.read_from_rom(gameboy.registers.pc))
+        hex_to_string(gameboy.bus[gameboy.registers.pc])
     )?;
 
     writeln!(lock, "{}", "Special addresses".bold().red())?;
@@ -164,7 +164,7 @@ fn main() {
             }
 
             "2" => {
-                if gameboy.bus.read_from_rom(gameboy.registers.pc) == additional_input as u8 {
+                if gameboy.bus[gameboy.registers.pc] == additional_input as u8 {
                     exit(0);
                 }
             }

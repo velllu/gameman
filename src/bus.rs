@@ -113,6 +113,11 @@ impl Bus {
 impl core::ops::Index<u16> for Bus {
     type Output = u8;
     fn index(&self, address: u16) -> &Self::Output {
+        // TODO: Remove this when I add joypad support
+        if address == 0xFF00 {
+            return &0xEF;
+        }
+
         match address {
             0x0000..=0x7FFF => &self.rom_clone[address as usize],
             0x8000..=0x9FFF => &self.video_ram[(address - 0x8000) as usize],
@@ -147,14 +152,9 @@ impl core::ops::IndexMut<u16> for Bus {
 }
 
 impl Bus {
-    /// Returns the opcode at specified address
-    pub fn read_from_rom(&self, pc: u16) -> u8 {
-        self.rom[pc as usize]
-    }
-
     /// Returns the byte X times after the `PC` register
     pub(crate) fn next(&self, offset: u16, registers: &Registers) -> u8 {
-        self.read_from_rom(registers.pc.wrapping_add(offset))
+        self[registers.pc.wrapping_add(offset)]
     }
 
     /// Returns the byte after the `PC` register
