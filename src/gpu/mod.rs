@@ -44,6 +44,9 @@ impl Gpu {
             state: GpuState::OamSearch,
             x: 0,
             y: 0,
+            has_just_entered_hblank: false,
+            has_just_entered_vblank: false,
+            has_just_entered_oam_scan: false,
             fifo: Vec::new(),
             sprites: Vec::new(),
             pixel_transfer_state: PixelTransferState::GetTile,
@@ -60,6 +63,11 @@ pub struct Gpu {
     pub state: GpuState,
     pub x: u8,
     pub y: u8,
+
+    // These are used in the interrupts
+    pub(crate) has_just_entered_hblank: bool,
+    pub(crate) has_just_entered_vblank: bool,
+    pub(crate) has_just_entered_oam_scan: bool,
 
     fifo: Vec<PixelData>,
 

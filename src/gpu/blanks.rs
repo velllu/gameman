@@ -4,6 +4,8 @@ use super::GpuState;
 
 impl GameBoy {
     pub(super) fn hblank(&mut self) {
+        self.gpu.has_just_entered_hblank = self.gpu.ticks == 0;
+
         if self.gpu.ticks == 0 {
             self.gpu.x = 0;
             self.gpu.fifo.clear();
@@ -28,6 +30,8 @@ impl GameBoy {
     pub(super) fn vblank(&mut self) {
         /// Amount of ticks needed to render a vblank line
         const VBLANK_LINE_TICKS: u16 = 456;
+
+        self.gpu.has_just_entered_vblank = self.gpu.ticks == 0;
 
         if self.gpu.ticks == 0 {
             self.layers

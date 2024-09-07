@@ -2,61 +2,88 @@ use crate::{
     bus::Bus,
     common::{split_u16_into_two_u8s, Bit},
     consts::gpu::{IE, IF, LY, LYC, STAT},
+    gpu::Gpu,
     registers::Registers,
 };
 
 use super::Cpu;
 
-#[derive(Debug, PartialEq)]
-pub enum Interrupt {
-    /// https://gbdev.io/pandocs/STAT.html?highlight=ff41#ff41--stat-lcd-status
-    /// This will get triggered if:
-    /// - STAT.3: Just entered PPU mode 0 (TODO)
-    /// - STAT.4: Just entered PPU mode 1 (TODO)
-    /// - STAT.5: Just entered PPU mode 2 (TODO)
+#[derive(Clone, Copy)]
+pub(crate) enum Interrupt {
+    /// Triggers when vblank is entered
+    VBlank = 0,
+
+    /// Triggers if:
+    /// - STAT.3: Just entered PPU mode 0
+    /// - STAT.4: Just entered PPU mode 1
+    /// - STAT.5: Just entered PPU mode 2
     /// - STAT.6: LYC == LY
-    Stat,
+    Stat = 1,
 }
 
 impl Cpu {
-    pub(crate) fn execute_interrupts(&mut self, registers: &mut Registers, bus: &mut Bus) {
-        if !self.ime {
-            return;
-        }
-
-        let stat = bus[STAT];
-        let is_lcd_enabled = stat.get_bit(6) && bus[LYC] == bus[LY];
-
-        // All this thing is done because an interrupt can only be triggered if it was
-        // previously off
-        if let Some(is_previous_lcd_enabled) = self.previous_lcd {
-            if is_lcd_enabled && !is_previous_lcd_enabled {
-                self.execute_interrupt(Interrupt::Stat, registers, bus);
-            }
-        }
-
-        self.previous_lcd = Some(is_lcd_enabled);
-    }
-
-    fn execute_interrupt(
+    /// Each interrupt has a condition on wheter it gets activated or not, when its bit
+    /// in IE is activated and the condition applies, we start Interrupt Handling
+    pub(crate) fn execute_interrupts(
         &mut self,
-        interrupt: Interrupt,
+        gpu: &Gpu,
         registers: &mut Registers,
         bus: &mut Bus,
     ) {
-        // The bit corresponding to the correct interrupt, both in Interrupt Enable, and
-        // Interrupt Flag bytes
-        let if_bit: u8 = match interrupt {
-            Interrupt::Stat => 1,
-        };
+        let interrupt_enable = bus[IE];
 
-        // We can only execute an interrupt if it's turned on in the Interrupt Enable and
-        // Interrupt Flag bytes
-        if bus[IE].get_bit(if_bit) && bus[IF].get_bit(if_bit) {
+        if interrupt_enable.get_bit(0) && gpu.has_just_entered_vblank {
+            self.handle_interrupt(Interrupt::VBlank, registers, bus);
             return;
         }
 
-        let return_address: u16 = match interrupt {
+        if interrupt_enable.get_bit(1) {
+            let stat = bus[STAT];
+
+            if stat.get_bit(3) && gpu.has_just_entered_hblank {
+                self.handle_interrupt(Interrupt::Stat, registers, bus);
+                return;
+            }
+
+            if stat.get_bit(4) && gpu.has_just_entered_vblank {
+                self.handle_interrupt(Interrupt::Stat, registers, bus);
+                return;
+            }
+
+            if stat.get_bit(5) && gpu.has_just_entered_oam_scan {
+                self.handle_interrupt(Interrupt::Stat, registers, bus);
+                return;
+            }
+
+            if stat.get_bit(6) && bus[LY] == bus[LYC] {
+                self.handle_interrupt(Interrupt::Stat, registers, bus);
+                return;
+            }
+
+            return;
+        }
+    }
+
+    /// We only dispatch an interrupt if IME is true, but regardless of that we reset the
+    /// interrupt bit in IF, this is not used by the emulator but by the program itself
+    fn handle_interrupt(&mut self, interrupt: Interrupt, registers: &mut Registers, bus: &mut Bus) {
+        let mut input_flags = bus[IF];
+        input_flags.set_bit(interrupt as u8, false);
+        bus[IF] = input_flags;
+
+        if self.ime {
+            self.dispatch_interrupt(interrupt, registers, bus);
+
+            // We disable IME so interrupts are not called immediately, interrupts
+            // typically end with a `RETI` instruction that turns this back on
+            self.ime = false;
+        }
+    }
+
+    /// We `CALL` the arbitrary address specified by the interrupt
+    fn dispatch_interrupt(&self, interrupt: Interrupt, registers: &mut Registers, bus: &mut Bus) {
+        let return_address = match interrupt {
+            Interrupt::VBlank => 0x40,
             Interrupt::Stat => 0x48,
         };
 
@@ -67,9 +94,5 @@ impl Cpu {
         registers.sp = registers.sp.wrapping_sub(1);
         bus[registers.sp] = c;
         registers.pc = return_address;
-
-        let mut input_flags = bus[IF];
-        input_flags.set_bit(if_bit, false);
-        bus[IF] = input_flags;
     }
 }

@@ -7,6 +7,8 @@ use super::{
 
 impl GameBoy {
     pub(super) fn oam_search(&mut self) {
+        self.gpu.has_just_entered_oam_scan = self.gpu.ticks == 0;
+
         if self.gpu.ticks == 0 {
             self.gpu.y = 0;
             self.gpu.sprites.clear();

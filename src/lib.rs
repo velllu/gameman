@@ -76,7 +76,7 @@ impl GameBoy {
 
         // CPU - Interrupts
         self.cpu
-            .execute_interrupts(&mut self.registers, &mut self.bus);
+            .execute_interrupts(&self.gpu, &mut self.registers, &mut self.bus);
 
         // GPU
         for _ in 0..(cycles * 4) {
