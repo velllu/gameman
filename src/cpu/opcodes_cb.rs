@@ -11,6 +11,30 @@ impl Cpu {
         bus: &mut Bus,
     ) -> (Bytes, Cycles) {
         match opcode {
+            // Instruction `SLA r` - 00100rrr
+            // Shift the contents of register r to the left and store bit 7 in carry flag
+            0x20..=0x27 => {
+                let register_r = regs.get_register(opcode, bus);
+                let new_value = register_r << 1;
+
+                flags.carry = register_r.get_bit(7);
+                regs.set_register(opcode, new_value, bus);
+
+                (1, 1)
+            }
+
+            // Instruction `SRA r` - 00100rrr
+            // Shift the contents of register r to the right and store bit 0 in carry flag
+            0x28..=0x2F => {
+                let register_r = regs.get_register(opcode, bus);
+                let new_value = register_r >> 1;
+
+                flags.carry = register_r.get_bit(0);
+                regs.set_register(opcode, new_value, bus);
+
+                (1, 1)
+            }
+
             // Instruction `SWAP r` - 00110rrr
             // Swap high four bits with low four bits
             0x30..=0x37 => {

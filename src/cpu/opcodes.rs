@@ -330,14 +330,8 @@ impl Cpu {
 
             // Instruction `RETI` - 11011001
             // Like the `RET` instruction but Interrupt Master Enable flag is set to true
-            // TODO: Replace this with a return function since we already have three of
-            // this
             0xD9 => {
-                let c = bus[regs.sp];
-                regs.sp = regs.sp.wrapping_add(1);
-                let p = bus[regs.sp];
-                regs.sp = regs.sp.wrapping_add(1);
-                regs.pc = merge_two_u8s_into_u16(p, c);
+                self.interpret_opcode(RET, flags, regs, bus);
                 self.ime = true;
 
                 (1, 4)
