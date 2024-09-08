@@ -1,7 +1,7 @@
 #![forbid(unsafe_code)]
 
 use bus::{Bus, BusError};
-use consts::bus::ROM_SIZE;
+use consts::{bus::ROM_SIZE, joypad::JOYP};
 use cpu::Cpu;
 use flags::Flags;
 use gpu::{
@@ -10,6 +10,7 @@ use gpu::{
     },
     Gpu,
 };
+use joypad::Joypad;
 use registers::Registers;
 
 mod bus;
@@ -18,6 +19,7 @@ pub mod consts;
 mod cpu;
 mod flags;
 pub mod gpu;
+mod joypad;
 mod registers;
 
 pub struct GameBoy {
@@ -25,6 +27,7 @@ pub struct GameBoy {
     pub cpu: Cpu,
     pub flags: Flags,
     pub gpu: Gpu,
+    pub joypad: Joypad,
     pub registers: Registers,
 
     /// The GameBoy's screen has three layers, this array houses those layers, they are
@@ -37,9 +40,10 @@ impl GameBoy {
         Ok(Self {
             bus: Bus::new(rom_path)?,
             cpu: Cpu::new(),
-            registers: Registers::new(),
             flags: Flags::new(),
             gpu: Gpu::new(),
+            joypad: Joypad::new(),
+            registers: Registers::new(),
             layers: [
                 Box::new(BackgroundLayer::new()),
                 Box::new(WindowLayer::new()),
@@ -52,9 +56,10 @@ impl GameBoy {
         Self {
             bus: Bus::new_from_rom_array(rom),
             cpu: Cpu::new(),
-            registers: Registers::new(),
             flags: Flags::new(),
             gpu: Gpu::new(),
+            joypad: Joypad::new(),
+            registers: Registers::new(),
             layers: [
                 Box::new(BackgroundLayer::new()),
                 Box::new(WindowLayer::new()),
@@ -86,5 +91,8 @@ impl GameBoy {
             // procedurally and call `Gpu.tick()` for every cycle from there
             self.tick();
         }
+
+        // JOYPAD
+        self.bus[JOYP] = self.joypad.to_byte(&self.bus);
     }
 }

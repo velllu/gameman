@@ -59,7 +59,18 @@ async fn main() {
 
         clear_background(MacroColor::from_rgba(0x28, 0x28, 0x28, 255));
 
-        for (y_coordinate, y) in gameboy_clone.lock().unwrap().gpu.screen.iter().enumerate() {
+        let mut gameboy = gameboy_clone.lock().unwrap();
+
+        gameboy.joypad.is_up_pressed = is_key_down(KeyCode::W);
+        gameboy.joypad.is_left_pressed = is_key_down(KeyCode::A);
+        gameboy.joypad.is_down_pressed = is_key_down(KeyCode::S);
+        gameboy.joypad.is_right_pressed = is_key_down(KeyCode::D);
+        gameboy.joypad.is_select_pressed = is_key_down(KeyCode::Q);
+        gameboy.joypad.is_start_pressed = is_key_down(KeyCode::E);
+        gameboy.joypad.is_a_pressed = is_key_down(KeyCode::O);
+        gameboy.joypad.is_b_pressed = is_key_down(KeyCode::P);
+
+        for (y_coordinate, y) in gameboy.gpu.screen.iter().enumerate() {
             for (x_coordinate, x) in y.iter().enumerate() {
                 image.set_pixel(
                     x_coordinate as u32,
@@ -73,6 +84,8 @@ async fn main() {
                 );
             }
         }
+
+        drop(gameboy);
 
         texture.update(&image);
         draw_texture_ex(

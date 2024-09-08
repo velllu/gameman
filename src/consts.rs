@@ -30,3 +30,7 @@ pub mod display {
     pub const DISPLAY_SIZE_X: usize = 160;
     pub const DISPLAY_SIZE_Y: usize = 144;
 }
+
+pub mod joypad {
+    pub const JOYP: u16 = 0xFF00;
+}
