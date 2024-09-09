@@ -2,7 +2,7 @@
 
 use crate::{
     bus::Bus,
-    common::{merge_two_u8s_into_u16, split_u16_into_two_u8s},
+    common::{merge_two_u8s_into_u16, split_u16_into_two_u8s, Bit},
     flags::Flags,
     registers::Registers,
 };
@@ -118,13 +118,32 @@ impl Cpu {
                 (1, 2)
             }
 
+            // Instruction `RLA` - 00010111
+            // Shift register A left by one and set lower bit to carry flag
+            0x17 => {
+                let mut new_value = regs.a << 1;
+                new_value.set_bit(0, flags.carry);
+                regs.a = new_value;
+
+                (1, 1)
+            }
+
             // Instruction `JR immediate data` - 00011000
             // Convert immediate data to signed 8 bit number and add it to the pc
             0x18 => {
                 let jump_amount = bus.next_one(regs) as i8;
-                add_i8_to_u16(&mut regs.pc, jump_amount);
+                regs.pc = add_i8_to_u16(regs.pc, jump_amount);
 
                 (2, 2)
+            }
+
+            // Instruction `RRA` - 00011111
+            // Rotate register A to the right by one and set register 7 to carry flag
+            0x1F => {
+                regs.a = regs.a.rotate_right(1);
+                regs.a.set_bit(7, flags.carry);
+
+                (1, 1)
             }
 
             // Instruction `JR condition, immediate data` - 001cc000
@@ -143,6 +162,14 @@ impl Cpu {
             // Flip the bits of register A
             0x2F => {
                 regs.a = !regs.a;
+
+                (1, 1)
+            }
+
+            // Instruction `CCF` - 00111111
+            // Flip carry flag
+            0x3F => {
+                flags.carry = !flags.carry;
 
                 (1, 1)
             }
@@ -399,6 +426,16 @@ impl Cpu {
                 (1, 1)
             }
 
+            // Instruction `LD HL, SP + immediate data` - 11111000
+            // Add SP to signed immediate data and copy the result to register HL
+            0xF8 => {
+                let immediate_data = bus.next_one(regs) as i8;
+                let new_value = add_i8_to_u16(regs.sp, immediate_data);
+                (regs.h, regs.l) = split_u16_into_two_u8s(new_value);
+
+                (2, 3)
+            }
+
             // Instruction `LD register A, (immediate data)` - 11111010
             // Load specified address into register A
             0xFA => {
@@ -432,11 +469,11 @@ impl Cpu {
     }
 }
 
-fn add_i8_to_u16(u16: &mut u16, i8: i8) {
-    *u16 = match i8 >= 0 {
+fn add_i8_to_u16(u16: u16, i8: i8) -> u16 {
+    match i8 >= 0 {
         true => u16.wrapping_add(i8 as u16),
         false => u16.wrapping_sub(i8.unsigned_abs() as u16),
-    };
+    }
 }
 
 /// Cases:
