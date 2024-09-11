@@ -86,6 +86,10 @@ impl Cpu {
                 (2, 2)
             }
 
+            // Instruction `RLCA r` - 00000111
+            // Exactly like the CB instruction `RLC a` which is the same opcode
+            0x07 => self.interpret_cb_opcode(opcode, flags, regs, bus),
+
             // Instruction `LD (immediate data), SP` - 00001000
             // Load the lower part of SP into immediate data address and the higher part
             // in the next cell
@@ -156,6 +160,13 @@ impl Cpu {
                 } else {
                     (2, 2)
                 }
+            }
+
+            // TODO: Implement this
+            0x27 => {
+                regs.a = 0;
+
+                (1, 1)
             }
 
             // Instruction `CPL` - 00101111
@@ -383,6 +394,15 @@ impl Cpu {
                 (1, 2)
             }
 
+            // Instruction `ADD SP, immediate data` - 11101000
+            // Add immediate data to register SP
+            0xE8 => {
+                let immediate_data = bus.next_one(regs) as i8;
+                regs.sp = add_i8_to_u16(regs.sp, immediate_data);
+
+                (2, 4)
+            }
+
             // Instruction `JP HL` - 11101001
             // Sets pc to register HL
             0xE9 => {
@@ -434,6 +454,14 @@ impl Cpu {
                 (regs.h, regs.l) = split_u16_into_two_u8s(new_value);
 
                 (2, 3)
+            }
+
+            // Instruction `LD SP, HL` - 11111001
+            // Copy register HL to SP
+            0xF9 => {
+                regs.sp = merge_two_u8s_into_u16(regs.h, regs.l);
+
+                (1, 2)
             }
 
             // Instruction `LD register A, (immediate data)` - 11111010

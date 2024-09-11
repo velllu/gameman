@@ -11,6 +11,20 @@ impl Cpu {
         bus: &mut Bus,
     ) -> (Bytes, Cycles) {
         match opcode {
+            // Instruction `RLC r` - 00000rrr
+            // Rotate the contents of register r to the left and set bit 0 and carry flag
+            // to register r's bit 7
+            0x00..=0x07 => {
+                let register_r = regs.get_register(opcode, bus);
+                let mut new_value = register_r.rotate_left(1);
+                let bit_0 = register_r.get_bit(0);
+
+                new_value.set_bit(0, bit_0);
+                flags.carry = bit_0;
+
+                (1, 1)
+            }
+
             // Instruction `RL r` - 00010rrr
             // Rotate the contents of register r to the left and set bit 0 to carry flag
             0x10..=0x17 => {
