@@ -43,6 +43,9 @@ pub struct Bus {
 
     /// TODO: This should actually not be usuable
     unusable_ram: [u8; UNUSABLE_RAM_SIZE],
+
+    /// Gets true when the user writes to OAM DMA register
+    pub(crate) needs_to_dispatch_oam_dma: bool,
 }
 
 #[rustfmt::skip]
@@ -90,6 +93,7 @@ impl Bus {
             unusable_ram: [0u8; UNUSABLE_RAM_SIZE],
             video_ram: [0u8; VIDEO_RAM_SIZE],
             work_ram: [0u8; WORK_RAM_SIZE],
+            needs_to_dispatch_oam_dma: false,
         })
     }
 
@@ -105,6 +109,7 @@ impl Bus {
             unusable_ram: [0u8; UNUSABLE_RAM_SIZE],
             video_ram: [0u8; VIDEO_RAM_SIZE],
             work_ram: [0u8; WORK_RAM_SIZE],
+            needs_to_dispatch_oam_dma: false,
         }
     }
 }
@@ -139,7 +144,13 @@ impl core::ops::IndexMut<u16> for Bus {
             0xE000..=0xFDFF => &mut self.work_ram[(address - 0xE000) as usize],
             0xFE00..=0xFE9F => &mut self.eom[(address - 0xFE00) as usize],
             0xFEA0..=0xFEFF => &mut self.unusable_ram[(address - 0xFEA0) as usize],
-            0xFF00..=0xFF7F => &mut self.io[(address - IO_START as u16) as usize],
+            0xFF00..=0xFF7F => {
+                if address == DMA {
+                    self.needs_to_dispatch_oam_dma = true;
+                }
+
+                &mut self.io[(address - IO_START as u16) as usize]
+            }
             0xFF80..=0xFFFE => &mut self.high_ram[(address - 0xFF80) as usize],
             0xFFFF => &mut self.ie,
         }
@@ -160,5 +171,17 @@ impl Bus {
     /// Returns the next two bytes from the `PC` register in little endian format
     pub(crate) fn next_two(&self, registers: &Registers) -> u16 {
         merge_two_u8s_into_u16(self.next(2, registers), self.next(1, registers))
+    }
+}
+
+impl Bus {
+    pub(crate) fn dispatch_oam_transfer(&mut self) {
+        let oam_dma_start = (self[DMA] as u16) << 8;
+        let oam_dma_end = oam_dma_start | 0x9F;
+        let difference = oam_dma_end - oam_dma_start;
+
+        for i in 0..difference {
+            self[0xFE00 + i] = self[oam_dma_start + i];
+        }
     }
 }

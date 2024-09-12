@@ -83,6 +83,12 @@ impl GameBoy {
         self.cpu
             .execute_interrupts(&self.gpu, &mut self.registers, &mut self.bus);
 
+        // CPU - OAM DMA Transfer
+        if self.bus.needs_to_dispatch_oam_dma {
+            self.bus.dispatch_oam_transfer();
+            self.bus.needs_to_dispatch_oam_dma = false;
+        }
+
         // GPU
         for _ in 0..(cycles * 4) {
             // A GPU tick is 1/4 of a cycle, so it needs to be called 4 times for every

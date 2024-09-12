@@ -8,6 +8,7 @@ pub mod bus {
     pub const WORK_RAM_SIZE: usize = 8192;
     pub const EXTERNAL_RAM_SIZE: usize = 8192;
     pub const UNUSABLE_RAM_SIZE: usize = 96;
+    pub const DMA: u16 = 0xFF46;
 }
 
 pub mod gpu {
