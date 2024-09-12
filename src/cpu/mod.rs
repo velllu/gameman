@@ -13,10 +13,16 @@ pub struct Cpu {
     /// IME, standing for "Interrupt Master Enable" is basically a switch on whether
     /// interrupts should be handled or not
     pub ime: bool,
+
+    /// Wheter or not the CPU is halted
+    pub halt: bool,
 }
 
 impl Cpu {
     pub(crate) fn new() -> Self {
-        Self { ime: false }
+        Self {
+            ime: false,
+            halt: false,
+        }
     }
 }

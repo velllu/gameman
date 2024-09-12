@@ -2,7 +2,7 @@
 
 use crate::{
     bus::Bus,
-    common::{merge_two_u8s_into_u16, split_u16_into_two_u8s, Bit},
+    common::{merge_two_u8s_into_u16, split_u16_into_two_u8s},
     flags::Flags,
     registers::Registers,
 };
@@ -22,8 +22,14 @@ impl Cpu {
         regs: &mut Registers,
         bus: &mut Bus,
     ) -> (Bytes, Cycles) {
+        if self.halt {
+            self.halt = false;
+            return (0, 1);
+        }
+
         // TODO: Fix timing on instruction with register `6`, they should have a clock more
         match opcode {
+            // Instruction `NOP`
             0x00 => (1, 0),
 
             // Instruction `LD rr, immediate data` - 00rr0001
@@ -87,8 +93,13 @@ impl Cpu {
             }
 
             // Instruction `RLCA r` - 00000111
-            // Exactly like the CB instruction `RLC a` which is the same opcode
-            0x07 => self.interpret_cb_opcode(opcode, flags, regs, bus),
+            // Exactly like the CB instruction `RLC a` which is the same opcode but resets
+            // zero flag
+            0x07 => {
+                self.interpret_cb_opcode(opcode, flags, regs, bus);
+                flags.zero = false;
+                (1, 1)
+            }
 
             // Instruction `LD (immediate data), SP` - 00001000
             // Load the lower part of SP into immediate data address and the higher part
@@ -108,7 +119,10 @@ impl Cpu {
             0x09 | 0x19 | 0x29 | 0x39 => {
                 let register_r = regs.get_register_couple(opcode >> 4);
                 let register_hl = merge_two_u8s_into_u16(regs.h, regs.l);
-                (regs.h, regs.l) = split_u16_into_two_u8s(register_hl.wrapping_add(register_r));
+                let (result, has_oveflown) = register_hl.overflowing_add(register_r);
+
+                flags.carry = has_oveflown;
+                (regs.h, regs.l) = split_u16_into_two_u8s(result);
 
                 (1, 2)
             }
@@ -122,13 +136,21 @@ impl Cpu {
                 (1, 2)
             }
 
-            // Instruction `RLA` - 00010111
-            // Shift register A left by one and set lower bit to carry flag
-            0x17 => {
-                let mut new_value = regs.a << 1;
-                new_value.set_bit(0, flags.carry);
-                regs.a = new_value;
+            // Instruction `RRCA` - 00001111
+            // Exactly like the CB instruction `RRC a` which is the same opcode but resets
+            // zero flag
+            0x0F => {
+                self.interpret_cb_opcode(opcode, flags, regs, bus);
+                flags.zero = false;
+                (1, 1)
+            }
 
+            // Instruction `RLA` - 00010111
+            // Exactly like the CB instruction `RL a` which is the same opcode but resets
+            // zero flag
+            0x17 => {
+                self.interpret_cb_opcode(opcode, flags, regs, bus);
+                flags.zero = false;
                 (1, 1)
             }
 
@@ -142,11 +164,11 @@ impl Cpu {
             }
 
             // Instruction `RRA` - 00011111
-            // Rotate register A to the right by one and set register 7 to carry flag
+            // Exactly like the CB instruction `RR a` which is the same opcode but resets
+            // zero flag
             0x1F => {
-                regs.a = regs.a.rotate_right(1);
-                regs.a.set_bit(7, flags.carry);
-
+                self.interpret_cb_opcode(opcode, flags, regs, bus);
+                flags.zero = false;
                 (1, 1)
             }
 
@@ -177,6 +199,14 @@ impl Cpu {
                 (1, 1)
             }
 
+            // Instruction `SCF` - 00110111
+            // Set carry flag
+            0x37 => {
+                flags.carry = true;
+
+                (1, 1)
+            }
+
             // Instruction `CCF` - 00111111
             // Flip carry flag
             0x3F => {
@@ -187,7 +217,11 @@ impl Cpu {
 
             // Instruction Halt
             // This is in the middle of the ld instructions, TODO: implement this fully
-            0x76 => (0, 1),
+            0x76 => {
+                self.halt = true;
+
+                (1, 1)
+            }
 
             // Instruction `LD x, y` - 01xxxyyy
             // Load the value of register y into register x
@@ -372,7 +406,7 @@ impl Cpu {
                 self.interpret_opcode(RET, flags, regs, bus);
                 self.ime = true;
 
-                (1, 4)
+                (0, 4)
             }
 
             // Instruction `LD io address, register A` - 11100000
@@ -397,8 +431,16 @@ impl Cpu {
             // Instruction `ADD SP, immediate data` - 11101000
             // Add immediate data to register SP
             0xE8 => {
-                let immediate_data = bus.next_one(regs) as i8;
-                regs.sp = add_i8_to_u16(regs.sp, immediate_data);
+                let immediate_data = bus.next_one(regs);
+                let immediate_data_signed = immediate_data as i8;
+
+                // In this instruction, the carry flag is set if the lower bits of sp and
+                // the unsigned byte of immediate data overflows
+                let p = (regs.sp & 0x00FF) as u8;
+                flags.carry = p.checked_add(immediate_data).is_none();
+
+                flags.zero = false;
+                regs.sp = add_i8_to_u16(regs.sp, immediate_data_signed);
 
                 (2, 4)
             }
@@ -449,8 +491,17 @@ impl Cpu {
             // Instruction `LD HL, SP + immediate data` - 11111000
             // Add SP to signed immediate data and copy the result to register HL
             0xF8 => {
-                let immediate_data = bus.next_one(regs) as i8;
-                let new_value = add_i8_to_u16(regs.sp, immediate_data);
+                let immediate_data = bus.next_one(regs);
+                let immediate_data_signed = immediate_data as i8;
+
+                // In this instruction, the carry flag is set if the lower bits of sp and
+                // the unsigned byte of immediate data overflows
+                let p = (regs.sp & 0x00FF) as u8;
+                flags.carry = p.checked_add(immediate_data).is_none();
+
+                flags.zero = false;
+
+                let new_value = add_i8_to_u16(regs.sp, immediate_data_signed);
                 (regs.h, regs.l) = split_u16_into_two_u8s(new_value);
 
                 (2, 3)
@@ -515,9 +566,17 @@ fn add_i8_to_u16(u16: u16, i8: i8) -> u16 {
 fn do_operation(operation_num: u8, num1: u8, num2: u8, flags: &Flags) -> (u8, bool) {
     match operation_num & 0b00000111 {
         0 => num1.overflowing_add(num2),
-        1 => num1.overflowing_add(num2.wrapping_add(flags.carry as u8)),
+        1 => {
+            let (result_c, has_overflown_c) = num2.overflowing_add(flags.carry as u8);
+            let (result, has_overflown) = num1.overflowing_add(result_c);
+            (result, has_overflown || has_overflown_c)
+        }
         2 => num1.overflowing_sub(num2),
-        3 => num1.overflowing_sub(num2.wrapping_sub(flags.carry as u8)),
+        3 => {
+            let (result_c, has_overflown_c) = num2.overflowing_add(flags.carry as u8);
+            let (result, has_overflown) = num1.overflowing_sub(result_c);
+            (result, has_overflown || has_overflown_c)
+        }
         4 => (num1 & num2, false),
         5 => (num1 ^ num2, false),
         6 => (num1 | num2, false),

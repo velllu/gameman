@@ -16,11 +16,31 @@ impl Cpu {
             // to register r's bit 7
             0x00..=0x07 => {
                 let register_r = regs.get_register(opcode, bus);
-                let mut new_value = register_r.rotate_left(1);
+                let mut new_value = register_r << 1;
+                let bit_7 = register_r.get_bit(7);
+
+                new_value.set_bit(0, bit_7);
+                flags.zero = new_value == 0;
+                flags.carry = bit_7;
+
+                regs.set_register(opcode, new_value, bus);
+
+                (1, 1)
+            }
+
+            // Instruction `RRC r` - 00001rrr
+            // Rotate the contents of register r to the right and set bit 7 and carry flag
+            // to register r's bit 0
+            0x08..=0x0F => {
+                let register_r = regs.get_register(opcode, bus);
+                let mut new_value = register_r >> 1;
                 let bit_0 = register_r.get_bit(0);
 
-                new_value.set_bit(0, bit_0);
+                new_value.set_bit(7, bit_0);
+                flags.zero = new_value == 0;
                 flags.carry = bit_0;
+
+                regs.set_register(opcode, new_value, bus);
 
                 (1, 1)
             }
@@ -33,6 +53,7 @@ impl Cpu {
                 new_value.set_bit(0, flags.carry);
 
                 flags.zero = new_value == 0;
+                flags.carry = register_r.get_bit(7);
                 regs.set_register(opcode, new_value, bus);
 
                 (1, 1)
@@ -46,6 +67,7 @@ impl Cpu {
                 new_value.set_bit(7, flags.carry);
 
                 flags.zero = new_value == 0;
+                flags.carry = register_r.get_bit(0);
                 regs.set_register(opcode, new_value, bus);
 
                 (1, 1)
@@ -89,6 +111,7 @@ impl Cpu {
                 let new_value = high | low;
 
                 flags.zero = new_value == 0;
+                flags.carry = false;
                 regs.set_register(opcode, new_value, bus);
 
                 (1, 1)
@@ -113,7 +136,7 @@ impl Cpu {
                 let number = (opcode >> 3) & 0b00000111;
                 let register = regs.get_register(opcode, bus);
 
-                flags.zero = register.get_bit(number);
+                flags.zero = !register.get_bit(number);
 
                 (1, 1)
             }
@@ -141,8 +164,6 @@ impl Cpu {
 
                 (1, 1)
             }
-
-            _ => panic!("Unimplemented CB opcode: {:x}", opcode),
         }
     }
 }
