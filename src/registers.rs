@@ -4,6 +4,7 @@ use crate::{
     flags::Flags,
 };
 
+#[derive(PartialEq, Eq)]
 pub struct Registers {
     pub a: u8,
     pub b: u8,

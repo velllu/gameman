@@ -17,10 +17,10 @@ mod bus;
 pub mod common;
 pub mod consts;
 mod cpu;
-mod flags;
+pub mod flags;
 pub mod gpu;
 mod joypad;
-mod registers;
+pub mod registers;
 
 pub struct GameBoy {
     pub bus: Bus,

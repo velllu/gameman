@@ -27,14 +27,14 @@ impl Display for BusError {
 /// ```
 #[allow(unused)]
 pub struct Bus {
-    eom: [u8; EOM_SIZE],
-    external_ram: [u8; EXTERNAL_RAM_SIZE],
-    high_ram: [u8; HIGH_RAM_SIZE],
-    ie: u8,
-    io: [u8; IO_SIZE],
-    rom: [u8; ROM_SIZE],
-    video_ram: [u8; VIDEO_RAM_SIZE],
-    work_ram: [u8; WORK_RAM_SIZE],
+    pub eom: [u8; EOM_SIZE],
+    pub external_ram: [u8; EXTERNAL_RAM_SIZE],
+    pub high_ram: [u8; HIGH_RAM_SIZE],
+    pub ie: u8,
+    pub io: [u8; IO_SIZE],
+    pub rom: [u8; ROM_SIZE],
+    pub video_ram: [u8; VIDEO_RAM_SIZE],
+    pub work_ram: [u8; WORK_RAM_SIZE],
 
     /// TODO: This is not accurate to the gameboy, when a game writes to a ROM address,
     /// it should send commands to the cartridge, however, as of now, I just have a clone

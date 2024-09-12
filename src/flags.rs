@@ -1,5 +1,6 @@
 use crate::common::Bit;
 
+#[derive(PartialEq, Eq)]
 pub struct Flags {
     /// This is set when the result is zero
     pub zero: bool,
