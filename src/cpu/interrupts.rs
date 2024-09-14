@@ -1,7 +1,10 @@
 use crate::{
     bus::Bus,
     common::{split_u16_into_two_u8s, Bit},
-    consts::gpu::{IE, IF, LY, LYC, STAT},
+    consts::{
+        cpu::{IE, IF},
+        gpu::{LY, LYC, STAT},
+    },
     gpu::Gpu,
     registers::Registers,
 };

@@ -89,6 +89,9 @@ impl GameBoy {
             self.bus.needs_to_dispatch_oam_dma = false;
         }
 
+        // CPU - DIV Register
+        self.cpu.update_div_register(&mut self.bus, cycles);
+
         // GPU
         for _ in 0..(cycles * 4) {
             // A GPU tick is 1/4 of a cycle, so it needs to be called 4 times for every

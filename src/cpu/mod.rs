@@ -1,3 +1,5 @@
+use crate::{bus::Bus, consts::cpu::DIV};
+
 mod interrupts;
 mod opcodes;
 mod opcodes_cb;
@@ -16,6 +18,9 @@ pub struct Cpu {
 
     /// Wheter or not the CPU is halted
     pub halt: bool,
+
+    /// This is increased after each cycle, it's used for the timers
+    pub(crate) div_register: u16,
 }
 
 impl Cpu {
@@ -23,6 +28,16 @@ impl Cpu {
         Self {
             ime: false,
             halt: false,
+            div_register: 0,
         }
+    }
+
+    pub(crate) fn update_div_register(&mut self, bus: &mut Bus, cycles_num: u8) {
+        self.div_register = self.div_register.wrapping_add(cycles_num as u16);
+
+        // While the div register is 16 bit, we only actually give the bus the higher 8
+        // bits, this means that it will increment after 256 cycles
+        let higher_byte = (self.div_register >> 8) as u8;
+        bus[DIV] = higher_byte;
     }
 }
