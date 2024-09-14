@@ -36,6 +36,9 @@ pub struct Bus {
     pub video_ram: [u8; VIDEO_RAM_SIZE],
     pub work_ram: [u8; WORK_RAM_SIZE],
 
+    /// When we don't want the write data to go anywhere, this is never used otherwise
+    write_dump: u8,
+
     /// TODO: This is not accurate to the gameboy, when a game writes to a ROM address,
     /// it should send commands to the cartridge, however, as of now, I just have a clone
     /// of the ROM stored here, it acts like normal RAM.
@@ -93,6 +96,7 @@ impl Bus {
             unusable_ram: [0u8; UNUSABLE_RAM_SIZE],
             video_ram: [0u8; VIDEO_RAM_SIZE],
             work_ram: [0u8; WORK_RAM_SIZE],
+            write_dump: 0,
             needs_to_dispatch_oam_dma: false,
         })
     }
@@ -109,6 +113,7 @@ impl Bus {
             unusable_ram: [0u8; UNUSABLE_RAM_SIZE],
             video_ram: [0u8; VIDEO_RAM_SIZE],
             work_ram: [0u8; WORK_RAM_SIZE],
+            write_dump: 0,
             needs_to_dispatch_oam_dma: false,
         }
     }
@@ -137,7 +142,8 @@ impl core::ops::Index<u16> for Bus {
 impl core::ops::IndexMut<u16> for Bus {
     fn index_mut(&mut self, address: u16) -> &mut Self::Output {
         match address {
-            0x0000..=0x7FFF => &mut self.rom_clone[address as usize],
+            // We cannot write directly to the ROM... you know... read only memory
+            0x0000..=0x7FFF => &mut self.write_dump,
             0x8000..=0x9FFF => &mut self.video_ram[(address - 0x8000) as usize],
             0xA000..=0xBFFF => &mut self.external_ram[(address - 0xA000) as usize],
             0xC000..=0xDFFF => &mut self.work_ram[(address - 0xC000) as usize],
