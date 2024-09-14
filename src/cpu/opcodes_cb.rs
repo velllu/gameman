@@ -20,10 +20,10 @@ impl Cpu {
                 let bit_7 = register_r.get_bit(7);
 
                 new_value.set_bit(0, bit_7);
+                regs.set_register(opcode, new_value, bus);
                 flags.zero = new_value == 0;
                 flags.carry = bit_7;
-
-                regs.set_register(opcode, new_value, bus);
+                flags.subtraction = false;
 
                 (1, 1)
             }
@@ -37,10 +37,10 @@ impl Cpu {
                 let bit_0 = register_r.get_bit(0);
 
                 new_value.set_bit(7, bit_0);
+                regs.set_register(opcode, new_value, bus);
                 flags.zero = new_value == 0;
                 flags.carry = bit_0;
-
-                regs.set_register(opcode, new_value, bus);
+                flags.subtraction = false;
 
                 (1, 1)
             }
@@ -52,9 +52,10 @@ impl Cpu {
                 let mut new_value = register_r.rotate_left(1);
                 new_value.set_bit(0, flags.carry);
 
+                regs.set_register(opcode, new_value, bus);
                 flags.zero = new_value == 0;
                 flags.carry = register_r.get_bit(7);
-                regs.set_register(opcode, new_value, bus);
+                flags.subtraction = false;
 
                 (1, 1)
             }
@@ -66,9 +67,10 @@ impl Cpu {
                 let mut new_value = register_r.rotate_right(1);
                 new_value.set_bit(7, flags.carry);
 
+                regs.set_register(opcode, new_value, bus);
                 flags.zero = new_value == 0;
                 flags.carry = register_r.get_bit(0);
-                regs.set_register(opcode, new_value, bus);
+                flags.subtraction = false;
 
                 (1, 1)
             }
@@ -79,9 +81,10 @@ impl Cpu {
                 let register_r = regs.get_register(opcode, bus);
                 let new_value = register_r << 1;
 
+                regs.set_register(opcode, new_value, bus);
                 flags.carry = register_r.get_bit(7);
                 flags.zero = new_value == 0;
-                regs.set_register(opcode, new_value, bus);
+                flags.subtraction = false;
 
                 (1, 1)
             }
@@ -95,9 +98,10 @@ impl Cpu {
                 let mut new_value = register_r >> 1;
                 new_value.set_bit(7, bit_7);
 
-                flags.carry = register_r.get_bit(0);
-                flags.zero = new_value == 0;
                 regs.set_register(opcode, new_value, bus);
+                flags.zero = new_value == 0;
+                flags.carry = register_r.get_bit(0);
+                flags.subtraction = false;
 
                 (1, 1)
             }
@@ -110,9 +114,10 @@ impl Cpu {
                 let low = register_r << 4;
                 let new_value = high | low;
 
+                regs.set_register(opcode, new_value, bus);
                 flags.zero = new_value == 0;
                 flags.carry = false;
-                regs.set_register(opcode, new_value, bus);
+                flags.subtraction = false;
 
                 (1, 1)
             }
@@ -123,9 +128,10 @@ impl Cpu {
                 let register_r = regs.get_register(opcode, bus);
                 let new_value = register_r >> 1;
 
+                regs.set_register(opcode, new_value, bus);
                 flags.carry = register_r.get_bit(0);
                 flags.zero = new_value == 0;
-                regs.set_register(opcode, new_value, bus);
+                flags.subtraction = false;
 
                 (1, 1)
             }
@@ -137,6 +143,7 @@ impl Cpu {
                 let register = regs.get_register(opcode, bus);
 
                 flags.zero = !register.get_bit(number);
+                flags.subtraction = false;
 
                 (1, 1)
             }

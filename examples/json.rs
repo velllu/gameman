@@ -83,7 +83,7 @@ fn run_test(schemas: Vec<JsonSchema>) {
 
         // Setting values in ram
         for (address, value) in &schema.initial.ram {
-            gameboy.bus[*address] = *value;
+            gameboy.bus.direct_write(*address, *value);
         }
 
         // Setting registers
@@ -99,8 +99,7 @@ fn run_test(schemas: Vec<JsonSchema>) {
         let final_registers = register_schema_to_registers(&schema.final_);
         let final_flags = register_schema_to_flags(&schema.final_);
 
-        // These are not implemented yet
-        gameboy.flags.substraction = false;
+        // Half carry flag is not yet implemented
         gameboy.flags.half_carry = false;
 
         if gameboy.registers == final_registers {
@@ -158,16 +157,18 @@ fn run_test(schemas: Vec<JsonSchema>) {
         if were_flags_wrong {
             println!("Your flags:");
             println!(
-                "Zero: {}, Carry: {}",
+                "Zero: {}, Carry: {}, Subtraction: {}",
                 bool_to_symbol(gameboy.flags.zero),
-                bool_to_symbol(gameboy.flags.carry)
+                bool_to_symbol(gameboy.flags.carry),
+                bool_to_symbol(gameboy.flags.subtraction),
             );
 
             println!("\nCorrect flags:");
             println!(
-                "Zero: {}, Carry: {}",
+                "Zero: {}, Carry: {}, Subtraction: {}",
                 bool_to_symbol(final_flags.zero),
-                bool_to_symbol(final_flags.carry)
+                bool_to_symbol(final_flags.carry),
+                bool_to_symbol(final_flags.subtraction),
             );
 
             println!("");
@@ -207,9 +208,9 @@ fn register_schema_to_registers(schema: &RegisterSchema) -> Registers {
 fn register_schema_to_flags(schema: &RegisterSchema) -> Flags {
     Flags {
         zero: (schema.f >> 7) != 0,
-        carry: ((schema.f & 0b0001_0000) >> 4) != 0,
+        subtraction: ((schema.f >> 6) & 0b1) != 0,
         half_carry: false,
-        substraction: false,
+        carry: ((schema.f >> 4) & 0b1) != 0,
     }
 }
 

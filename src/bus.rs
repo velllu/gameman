@@ -164,6 +164,16 @@ impl core::ops::IndexMut<u16> for Bus {
 }
 
 impl Bus {
+    /// Like write but can write to rom
+    pub fn direct_write(&mut self, address: u16, value: u8) {
+        if (0x0000..=0x7FFF).contains(&address) {
+            self.rom_clone[address as usize] = value;
+            return;
+        }
+
+        self[address] = value;
+    }
+
     /// Returns the byte X times after the `PC` register
     pub(crate) fn next(&self, offset: u16, registers: &Registers) -> u8 {
         self[registers.pc.wrapping_add(offset)]

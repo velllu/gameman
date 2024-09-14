@@ -53,7 +53,34 @@ impl Cpu {
             0x03 | 0x13 | 0x23 | 0x33 => {
                 let new_value = regs.get_register_couple(opcode >> 4).wrapping_add(1);
                 regs.set_register_couple(opcode >> 4, new_value);
+
                 (1, 2)
+            }
+
+            // Instruction `INC r` - 00rrr100
+            // Increments by one given register and update flags
+            0x04 | 0x0C | 0x14 | 0x1C | 0x24 | 0x2C | 0x34 | 0x3C => {
+                let register_r = regs.get_register(opcode >> 3, bus);
+                let new_value = register_r.wrapping_add(1);
+
+                flags.zero = new_value == 0;
+                flags.subtraction = false;
+                regs.set_register(opcode >> 3, new_value, bus);
+
+                (1, 1)
+            }
+
+            // Instruction `DEC r` - 00rrr101
+            // Decrements by one given register and update flags
+            0x05 | 0x0D | 0x15 | 0x1D | 0x25 | 0x2D | 0x35 | 0x3D => {
+                let register_r = regs.get_register(opcode >> 3, bus);
+                let new_value = register_r.wrapping_sub(1);
+
+                flags.zero = new_value == 0;
+                flags.subtraction = true;
+                regs.set_register(opcode >> 3, new_value, bus);
+
+                (1, 1)
             }
 
             // Instruction `DEC rr` - 00rr0011
@@ -62,26 +89,6 @@ impl Cpu {
                 let new_value = regs.get_register_couple(opcode >> 4).wrapping_sub(1);
                 regs.set_register_couple(opcode >> 4, new_value);
                 (1, 2)
-            }
-
-            // Instruction `INC r` - 00rrr100
-            // Increments by one given register and update flags
-            0x04 | 0x0C | 0x14 | 0x1C | 0x24 | 0x2C | 0x34 | 0x3C => {
-                let new_value = regs.get_register(opcode >> 3, bus).wrapping_add(1);
-                regs.set_register(opcode >> 3, new_value, bus);
-                flags.zero = new_value == 0;
-
-                (1, 1)
-            }
-
-            // Instruction `DEC r` - 00rrr101
-            // Decrements by one given register and update flags
-            0x05 | 0x0D | 0x15 | 0x1D | 0x25 | 0x2D | 0x35 | 0x3D => {
-                let new_value = regs.get_register(opcode >> 3, bus).wrapping_sub(1);
-                regs.set_register(opcode >> 3, new_value, bus);
-                flags.zero = new_value == 0;
-
-                (1, 1)
             }
 
             // Instruction `LD r, immediate data` - 00rrr110
@@ -98,6 +105,9 @@ impl Cpu {
             0x07 => {
                 self.interpret_cb_opcode(opcode, flags, regs, bus);
                 flags.zero = false;
+                flags.subtraction = false;
+                flags.half_carry = false;
+
                 (1, 1)
             }
 
@@ -117,11 +127,13 @@ impl Cpu {
             // Instruction `ADD HL, rr` - 00rr1001
             // Add given register to register HL. TODO: Handle carry flag
             0x09 | 0x19 | 0x29 | 0x39 => {
-                let register_r = regs.get_register_couple(opcode >> 4);
                 let register_hl = merge_two_u8s_into_u16(regs.h, regs.l);
+                let register_r = regs.get_register_couple(opcode >> 4);
                 let (result, has_oveflown) = register_hl.overflowing_add(register_r);
 
                 flags.carry = has_oveflown;
+                flags.subtraction = false;
+
                 (regs.h, regs.l) = split_u16_into_two_u8s(result);
 
                 (1, 2)
@@ -142,6 +154,9 @@ impl Cpu {
             0x0F => {
                 self.interpret_cb_opcode(opcode, flags, regs, bus);
                 flags.zero = false;
+                flags.subtraction = false;
+                flags.half_carry = false;
+
                 (1, 1)
             }
 
@@ -151,6 +166,9 @@ impl Cpu {
             0x17 => {
                 self.interpret_cb_opcode(opcode, flags, regs, bus);
                 flags.zero = false;
+                flags.subtraction = false;
+                flags.half_carry = false;
+
                 (1, 1)
             }
 
@@ -169,6 +187,9 @@ impl Cpu {
             0x1F => {
                 self.interpret_cb_opcode(opcode, flags, regs, bus);
                 flags.zero = false;
+                flags.subtraction = false;
+                flags.half_carry = false;
+
                 (1, 1)
             }
 
@@ -195,6 +216,8 @@ impl Cpu {
             // Flip the bits of register A
             0x2F => {
                 regs.a = !regs.a;
+                flags.subtraction = true;
+                flags.half_carry = true;
 
                 (1, 1)
             }
@@ -203,6 +226,8 @@ impl Cpu {
             // Set carry flag
             0x37 => {
                 flags.carry = true;
+                flags.subtraction = false;
+                flags.half_carry = false;
 
                 (1, 1)
             }
@@ -211,6 +236,7 @@ impl Cpu {
             // Flip carry flag
             0x3F => {
                 flags.carry = !flags.carry;
+                flags.subtraction = false;
 
                 (1, 1)
             }
@@ -236,11 +262,13 @@ impl Cpu {
             // Do operation "o" on register r and register A, store result in register A
             0x80..=0xB7 => {
                 let register_r = regs.get_register(opcode, bus);
-                let (result, carry) = do_operation(opcode >> 3, regs.a, register_r, flags);
+                let (result, carry, subtraction) =
+                    do_operation(opcode >> 3, regs.a, register_r, flags);
 
                 regs.a = result;
                 flags.zero = result == 0;
                 flags.carry = carry;
+                flags.subtraction = subtraction;
 
                 (1, 1)
             }
@@ -253,6 +281,7 @@ impl Cpu {
 
                 flags.zero = result == 0;
                 flags.carry = has_overflown;
+                flags.subtraction = true;
 
                 (1, 1)
             }
@@ -333,11 +362,13 @@ impl Cpu {
             // register A
             0xC6 | 0xCE | 0xD6 | 0xDE | 0xE6 | 0xEE | 0xF6 => {
                 let immediate_data = bus.next_one(regs);
-                let (result, carry) = do_operation(opcode >> 3, regs.a, immediate_data, flags);
+                let (result, carry, subtraction) =
+                    do_operation(opcode >> 3, regs.a, immediate_data, flags);
 
                 regs.a = result;
                 flags.zero = result == 0;
                 flags.carry = carry;
+                flags.subtraction = subtraction;
 
                 (2, 2)
             }
@@ -437,10 +468,11 @@ impl Cpu {
                 // In this instruction, the carry flag is set if the lower bits of sp and
                 // the unsigned byte of immediate data overflows
                 let p = (regs.sp & 0x00FF) as u8;
-                flags.carry = p.checked_add(immediate_data).is_none();
+                regs.sp = add_i8_to_u16(regs.sp, immediate_data_signed);
 
                 flags.zero = false;
-                regs.sp = add_i8_to_u16(regs.sp, immediate_data_signed);
+                flags.carry = p.checked_add(immediate_data).is_none();
+                flags.subtraction = false;
 
                 (2, 4)
             }
@@ -497,9 +529,10 @@ impl Cpu {
                 // In this instruction, the carry flag is set if the lower bits of sp and
                 // the unsigned byte of immediate data overflows
                 let p = (regs.sp & 0x00FF) as u8;
-                flags.carry = p.checked_add(immediate_data).is_none();
 
+                flags.carry = p.checked_add(immediate_data).is_none();
                 flags.zero = false;
+                flags.subtraction = false;
 
                 let new_value = add_i8_to_u16(regs.sp, immediate_data_signed);
                 (regs.h, regs.l) = split_u16_into_two_u8s(new_value);
@@ -539,6 +572,7 @@ impl Cpu {
 
                 flags.zero = result == 0;
                 flags.carry = has_overflown;
+                flags.subtraction = true;
 
                 (2, 2)
             }
@@ -555,7 +589,8 @@ fn add_i8_to_u16(u16: u16, i8: i8) -> u16 {
     }
 }
 
-/// Cases:
+/// Returns (result, carry flag, subtraction flag). TODO: Rewrite this
+/// # Cases
 /// - 0: num1 + num2
 /// - 1: num1 + num2 + carry flag
 /// - 2: num1 - num2
@@ -563,8 +598,9 @@ fn add_i8_to_u16(u16: u16, i8: i8) -> u16 {
 /// - 4: num1 & num2
 /// - 5: num1 ^ num2
 /// - 6: num1 | num2
-fn do_operation(operation_num: u8, num1: u8, num2: u8, flags: &Flags) -> (u8, bool) {
-    match operation_num & 0b00000111 {
+fn do_operation(operation_num: u8, num1: u8, num2: u8, flags: &Flags) -> (u8, bool, bool) {
+    // Calculating result and carry flag
+    let (result, carry_flag) = match operation_num & 0b00000111 {
         0 => num1.overflowing_add(num2),
         1 => {
             let (result_c, has_overflown_c) = num2.overflowing_add(flags.carry as u8);
@@ -581,5 +617,19 @@ fn do_operation(operation_num: u8, num1: u8, num2: u8, flags: &Flags) -> (u8, bo
         5 => (num1 ^ num2, false),
         6 => (num1 | num2, false),
         _ => unreachable!(),
-    }
+    };
+
+    // Calculating subtraction flag
+    let subtraction_flag = match operation_num & 0b00000111 {
+        0 => false,
+        1 => false,
+        2 => true,
+        3 => true,
+        4 => false,
+        5 => false,
+        6 => false,
+        _ => unreachable!(),
+    };
+
+    (result, carry_flag, subtraction_flag)
 }
