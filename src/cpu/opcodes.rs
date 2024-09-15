@@ -215,9 +215,32 @@ impl Cpu {
                 }
             }
 
-            // TODO: Implement this
+            // Instruction `DAA` - 00100111
+            // Converts a binary number into a decimal one
             0x27 => {
-                regs.a = 0;
+                let mut value_to_add_or_sub = 0;
+                let mut should_carry = false;
+
+                // This instruction is kinda weird and there is not a lot of explaining
+                // on why it's like this, it really just is afaik
+
+                if (!flags.subtraction && regs.a & 0x0F > 0x09) || flags.half_carry {
+                    value_to_add_or_sub |= 0x06;
+                }
+
+                if (!flags.subtraction && regs.a > 0x99) || flags.carry {
+                    value_to_add_or_sub |= 0x60;
+                    should_carry = true;
+                }
+
+                regs.a = match flags.subtraction {
+                    false => regs.a.wrapping_add(value_to_add_or_sub),
+                    true => regs.a.wrapping_sub(value_to_add_or_sub),
+                };
+
+                flags.zero = regs.a == 0;
+                flags.carry = should_carry;
+                flags.half_carry = false;
 
                 (1, 1)
             }
