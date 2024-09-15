@@ -53,3 +53,44 @@ impl Flags {
         self.carry = byte.get_bit(4);
     }
 }
+
+/// Operations that work like the wrapping ones but also give you the flags
+pub(crate) trait FlagOperations {
+    fn flag_add(&self, rhs: Self) -> (Self, Flags)
+    where
+        Self: Sized;
+
+    fn flag_sub(&self, rhs: Self) -> (Self, Flags)
+    where
+        Self: Sized;
+}
+
+impl FlagOperations for u8 {
+    fn flag_add(&self, rhs: u8) -> (Self, Flags) {
+        let (result, has_overflown) = self.overflowing_add(rhs);
+
+        (
+            result,
+            Flags {
+                zero: result == 0,
+                subtraction: false,
+                half_carry: (self & 0x0F).wrapping_add(rhs & 0x0F) > 0x0F,
+                carry: has_overflown,
+            },
+        )
+    }
+
+    fn flag_sub(&self, rhs: u8) -> (Self, Flags) {
+        let (result, has_overflown) = self.overflowing_sub(rhs);
+
+        (
+            result,
+            Flags {
+                zero: result == 0,
+                subtraction: true,
+                half_carry: (self & 0x0F).wrapping_sub(rhs & 0x0F) > 0x0F,
+                carry: has_overflown,
+            },
+        )
+    }
+}

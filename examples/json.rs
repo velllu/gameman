@@ -99,9 +99,6 @@ fn run_test(schemas: Vec<JsonSchema>) {
         let final_registers = register_schema_to_registers(&schema.final_);
         let final_flags = register_schema_to_flags(&schema.final_);
 
-        // Half carry flag is not yet implemented
-        gameboy.flags.half_carry = false;
-
         if gameboy.registers == final_registers {
             print!("{}", format!(" ✔ Registers are correct ").green());
         } else {
@@ -157,18 +154,20 @@ fn run_test(schemas: Vec<JsonSchema>) {
         if were_flags_wrong {
             println!("Your flags:");
             println!(
-                "Zero: {}, Carry: {}, Subtraction: {}",
+                "Zero: {}, Carry: {}, Subtraction: {}, Half Carry: {}",
                 bool_to_symbol(gameboy.flags.zero),
                 bool_to_symbol(gameboy.flags.carry),
                 bool_to_symbol(gameboy.flags.subtraction),
+                bool_to_symbol(gameboy.flags.half_carry),
             );
 
             println!("\nCorrect flags:");
             println!(
-                "Zero: {}, Carry: {}, Subtraction: {}",
+                "Zero: {}, Carry: {}, Subtraction: {}, Half Carry: {}",
                 bool_to_symbol(final_flags.zero),
                 bool_to_symbol(final_flags.carry),
                 bool_to_symbol(final_flags.subtraction),
+                bool_to_symbol(final_flags.half_carry),
             );
 
             println!("");
@@ -209,7 +208,7 @@ fn register_schema_to_flags(schema: &RegisterSchema) -> Flags {
     Flags {
         zero: (schema.f >> 7) != 0,
         subtraction: ((schema.f >> 6) & 0b1) != 0,
-        half_carry: false,
+        half_carry: ((schema.f >> 5) & 0b1) != 0,
         carry: ((schema.f >> 4) & 0b1) != 0,
     }
 }

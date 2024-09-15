@@ -21,9 +21,11 @@ impl Cpu {
 
                 new_value.set_bit(0, bit_7);
                 regs.set_register(opcode, new_value, bus);
+
                 flags.zero = new_value == 0;
                 flags.carry = bit_7;
                 flags.subtraction = false;
+                flags.half_carry = false;
 
                 (1, 1)
             }
@@ -38,9 +40,11 @@ impl Cpu {
 
                 new_value.set_bit(7, bit_0);
                 regs.set_register(opcode, new_value, bus);
+
                 flags.zero = new_value == 0;
                 flags.carry = bit_0;
                 flags.subtraction = false;
+                flags.half_carry = false;
 
                 (1, 1)
             }
@@ -53,9 +57,11 @@ impl Cpu {
                 new_value.set_bit(0, flags.carry);
 
                 regs.set_register(opcode, new_value, bus);
+
                 flags.zero = new_value == 0;
                 flags.carry = register_r.get_bit(7);
                 flags.subtraction = false;
+                flags.half_carry = false;
 
                 (1, 1)
             }
@@ -68,9 +74,11 @@ impl Cpu {
                 new_value.set_bit(7, flags.carry);
 
                 regs.set_register(opcode, new_value, bus);
+
                 flags.zero = new_value == 0;
                 flags.carry = register_r.get_bit(0);
                 flags.subtraction = false;
+                flags.half_carry = false;
 
                 (1, 1)
             }
@@ -82,9 +90,11 @@ impl Cpu {
                 let new_value = register_r << 1;
 
                 regs.set_register(opcode, new_value, bus);
+
                 flags.carry = register_r.get_bit(7);
                 flags.zero = new_value == 0;
                 flags.subtraction = false;
+                flags.half_carry = false;
 
                 (1, 1)
             }
@@ -99,9 +109,11 @@ impl Cpu {
                 new_value.set_bit(7, bit_7);
 
                 regs.set_register(opcode, new_value, bus);
+
                 flags.zero = new_value == 0;
                 flags.carry = register_r.get_bit(0);
                 flags.subtraction = false;
+                flags.half_carry = false;
 
                 (1, 1)
             }
@@ -115,9 +127,11 @@ impl Cpu {
                 let new_value = high | low;
 
                 regs.set_register(opcode, new_value, bus);
+
                 flags.zero = new_value == 0;
                 flags.carry = false;
                 flags.subtraction = false;
+                flags.half_carry = false;
 
                 (1, 1)
             }
@@ -129,9 +143,11 @@ impl Cpu {
                 let new_value = register_r >> 1;
 
                 regs.set_register(opcode, new_value, bus);
+
                 flags.carry = register_r.get_bit(0);
                 flags.zero = new_value == 0;
                 flags.subtraction = false;
+                flags.half_carry = false;
 
                 (1, 1)
             }
@@ -144,6 +160,7 @@ impl Cpu {
 
                 flags.zero = !register.get_bit(number);
                 flags.subtraction = false;
+                flags.half_carry = true;
 
                 (1, 1)
             }
