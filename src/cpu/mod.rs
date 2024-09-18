@@ -38,6 +38,6 @@ impl Cpu {
         // While the div register is 16 bit, we only actually give the bus the higher 8
         // bits, this means that it will increment after 256 cycles
         let higher_byte = (self.div_register >> 8) as u8;
-        bus[DIV] = higher_byte;
+        bus.write(DIV, higher_byte);
     }
 }

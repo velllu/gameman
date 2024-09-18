@@ -24,10 +24,10 @@ impl GameBoy {
     }
 
     fn get_sprite_data(&self, address: u16) -> SpriteData {
-        let y = self.bus[address - 3];
-        let x = self.bus[address - 2];
-        let tile_number = self.bus[address - 1];
-        let flags = self.bus[address];
+        let y = self.bus.read(address - 3);
+        let x = self.bus.read(address - 2);
+        let tile_number = self.bus.read(address - 1);
+        let flags = self.bus.read(address);
 
         SpriteData {
             y,

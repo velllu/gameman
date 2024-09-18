@@ -9,12 +9,7 @@ use std::{
 };
 
 use colored::{ColoredString, Colorize};
-use gameman::{
-    consts::bus::{IO_SIZE, ROM_SIZE},
-    flags::Flags,
-    registers::Registers,
-    GameBoy,
-};
+use gameman::{consts::bus::IO_SIZE, flags::Flags, registers::Registers, GameBoy};
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize)]
@@ -76,14 +71,19 @@ fn run_test(schemas: Vec<JsonSchema>) {
         print!("Running test {}...", schema.name.yellow());
 
         // Creating gameboy
-        let mut gameboy = GameBoy::new_from_rom_array([0; ROM_SIZE]);
+        let mut gameboy = GameBoy::new_from_rom_array(vec![]);
 
         // IO must be all zero during tests
         gameboy.bus.io = [0; IO_SIZE];
 
         // Setting values in ram
         for (address, value) in &schema.initial.ram {
-            gameboy.bus.direct_write(*address, *value);
+            // We need to use the `direct_rom_write` function if writing to rom, the json
+            // tests do that a lot
+            match *address < 0x8000 as u16 {
+                false => gameboy.bus.write(*address, *value),
+                true => gameboy.bus.mbc.direct_rom_write(*address, *value),
+            }
         }
 
         // Setting registers

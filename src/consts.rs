@@ -3,7 +3,6 @@ pub mod bus {
     pub const HIGH_RAM_SIZE: usize = 127;
     pub const IO_SIZE: usize = 128;
     pub const IO_START: usize = 0xFF00;
-    pub const ROM_SIZE: usize = 32768;
     pub const VIDEO_RAM_SIZE: usize = 8192;
     pub const WORK_RAM_SIZE: usize = 8192;
     pub const EXTERNAL_RAM_SIZE: usize = 8192;

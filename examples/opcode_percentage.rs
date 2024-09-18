@@ -2,10 +2,10 @@
 use std::panic::{catch_unwind, set_hook, AssertUnwindSafe};
 
 use colored::Colorize;
-use gameman::{consts::bus::ROM_SIZE, GameBoy};
+use gameman::GameBoy;
 
 fn main() {
-    let mut gb = GameBoy::new_from_rom_array([0; ROM_SIZE]);
+    let mut gb = GameBoy::new_from_rom_array(vec![]);
 
     let mut working_opcodes = 0;
     let mut total_opcodes = 0;

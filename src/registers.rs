@@ -40,7 +40,7 @@ impl Registers {
             3 => self.e,
             4 => self.h,
             5 => self.l,
-            6 => bus[merge_two_u8s_into_u16(self.h, self.l)],
+            6 => bus.read(merge_two_u8s_into_u16(self.h, self.l)),
             7 => self.a,
 
             _ => unreachable!(),
@@ -55,7 +55,7 @@ impl Registers {
             3 => self.e = value,
             4 => self.h = value,
             5 => self.l = value,
-            6 => bus[merge_two_u8s_into_u16(self.h, self.l)] = value,
+            6 => bus.write(merge_two_u8s_into_u16(self.h, self.l), value),
             7 => self.a = value,
 
             _ => unreachable!(),

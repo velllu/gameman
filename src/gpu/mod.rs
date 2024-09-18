@@ -32,7 +32,7 @@ impl GameBoy {
             GpuState::VBlank => self.vblank(),
         }
 
-        self.bus[LY] = self.gpu.y;
+        self.bus.write(LY, self.gpu.y);
     }
 }
 

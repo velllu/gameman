@@ -33,7 +33,7 @@ impl Cpu {
         registers: &mut Registers,
         bus: &mut Bus,
     ) {
-        let interrupt_enable = bus[IE];
+        let interrupt_enable = bus.read(IE);
 
         if interrupt_enable.get_bit(0) && gpu.has_just_entered_vblank {
             self.handle_interrupt(Interrupt::VBlank, registers, bus);
@@ -41,7 +41,7 @@ impl Cpu {
         }
 
         if interrupt_enable.get_bit(1) {
-            let stat = bus[STAT];
+            let stat = bus.read(STAT);
 
             if stat.get_bit(3) && gpu.has_just_entered_hblank {
                 self.handle_interrupt(Interrupt::Stat, registers, bus);
@@ -58,7 +58,7 @@ impl Cpu {
                 return;
             }
 
-            if stat.get_bit(6) && bus[LY] == bus[LYC] {
+            if stat.get_bit(6) && bus.read(LY) == bus.read(LYC) {
                 self.handle_interrupt(Interrupt::Stat, registers, bus);
                 return;
             }
@@ -70,9 +70,9 @@ impl Cpu {
     /// We only dispatch an interrupt if IME is true, but regardless of that we reset the
     /// interrupt bit in IF, this is not used by the emulator but by the program itself
     fn handle_interrupt(&mut self, interrupt: Interrupt, registers: &mut Registers, bus: &mut Bus) {
-        let mut input_flags = bus[IF];
+        let mut input_flags = bus.read(IF);
         input_flags.set_bit(interrupt as u8, false);
-        bus[IF] = input_flags;
+        bus.write(IF, input_flags);
 
         if self.ime {
             self.dispatch_interrupt(interrupt, registers, bus);
@@ -93,9 +93,9 @@ impl Cpu {
         // This is like the call instruction but we don't subtract three
         let (p, c) = split_u16_into_two_u8s(registers.pc);
         registers.sp = registers.sp.wrapping_sub(1);
-        bus[registers.sp] = p;
+        bus.write(registers.sp, p);
         registers.sp = registers.sp.wrapping_sub(1);
-        bus[registers.sp] = c;
+        bus.write(registers.sp, c);
         registers.pc = return_address;
     }
 }

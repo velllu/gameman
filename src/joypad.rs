@@ -29,7 +29,7 @@ impl Joypad {
 impl Joypad {
     pub(crate) fn to_byte(&self, bus: &Bus) -> u8 {
         // The lower nibble is read only and contains button data
-        let mut joyp = bus[JOYP] & 0b11110000;
+        let mut joyp = bus.read(JOYP) & 0b11110000;
 
         // The higher nibble instead, is used to select which "group" of buttons to listen
         let are_buttons_enabled = joyp.get_bit(5);

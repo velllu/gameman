@@ -43,7 +43,7 @@ impl Cpu {
             // Copy register A to address specified by register r (with increments)
             0x02 | 0x12 | 0x22 | 0x32 => {
                 let address = regs.get_register_couple_with_increments(opcode >> 4);
-                bus[address] = regs.a;
+                bus.write(address, regs.a);
 
                 (1, 2)
             }
@@ -123,8 +123,8 @@ impl Cpu {
                 let (s, p) = split_u16_into_two_u8s(regs.sp);
                 let address = bus.next_two(regs);
 
-                bus[address] = p;
-                bus[address.wrapping_add(1)] = s;
+                bus.write(address, p);
+                bus.write(address.wrapping_add(1), s);
 
                 (3, 5)
             }
@@ -153,7 +153,7 @@ impl Cpu {
             // Copy register r (with increments) to register A
             0x0A | 0x1A | 0x2A | 0x3A => {
                 let address = regs.get_register_couple_with_increments(opcode >> 4);
-                regs.a = bus[address];
+                regs.a = bus.read(address);
 
                 (1, 2)
             }
@@ -334,9 +334,9 @@ impl Cpu {
 
             // Instruction `POP rrf` - 11rr0001
             0xC1 | 0xD1 | 0xE1 | 0xF1 => {
-                let low = bus[regs.sp];
+                let low = bus.read(regs.sp);
                 regs.sp = regs.sp.wrapping_add(1);
-                let high = bus[regs.sp];
+                let high = bus.read(regs.sp);
                 regs.sp = regs.sp.wrapping_add(1);
 
                 let popped_value = merge_two_u8s_into_u16(high, low);
@@ -385,9 +385,9 @@ impl Cpu {
                     split_u16_into_two_u8s(regs.get_register_couple_with_flags(opcode >> 4, flags));
 
                 regs.sp = regs.sp.wrapping_sub(1);
-                bus[regs.sp] = high;
+                bus.write(regs.sp, high);
                 regs.sp = regs.sp.wrapping_sub(1);
-                bus[regs.sp] = low;
+                bus.write(regs.sp, low);
 
                 (1, 4)
             }
@@ -412,9 +412,9 @@ impl Cpu {
             // Load address sp into lower part of pc, decrement sp, load address sp into
             // higher part of pc, and decrement sp again
             0xC9 => {
-                let c = bus[regs.sp];
+                let c = bus.read(regs.sp);
                 regs.sp = regs.sp.wrapping_add(1);
-                let p = bus[regs.sp];
+                let p = bus.read(regs.sp);
                 regs.sp = regs.sp.wrapping_add(1);
                 regs.pc = merge_two_u8s_into_u16(p, c);
 
@@ -439,9 +439,9 @@ impl Cpu {
                 let immediate_data = bus.next_two(regs);
 
                 regs.sp = regs.sp.wrapping_sub(1);
-                bus[regs.sp] = p;
+                bus.write(regs.sp, p);
                 regs.sp = regs.sp.wrapping_sub(1);
-                bus[regs.sp] = c;
+                bus.write(regs.sp, c);
                 regs.pc = immediate_data;
 
                 (0, 6)
@@ -455,9 +455,9 @@ impl Cpu {
                 // instruction
                 let (p, c) = split_u16_into_two_u8s(regs.pc.wrapping_add(1));
                 regs.sp = regs.sp.wrapping_sub(1);
-                bus[regs.sp] = p;
+                bus.write(regs.sp, p);
                 regs.sp = regs.sp.wrapping_sub(1);
-                bus[regs.sp] = c;
+                bus.write(regs.sp, c);
 
                 // Jump table
                 let n = (opcode >> 3) & 0b00000111;
@@ -480,7 +480,7 @@ impl Cpu {
             // `0xFF`
             0xE0 => {
                 let address = 0xFF00 | (bus.next_one(regs) as u16);
-                bus[address] = regs.a;
+                bus.write(address, regs.a);
 
                 (2, 3)
             }
@@ -489,7 +489,7 @@ impl Cpu {
             // Loads register a at address specified by register C with an offset of `0xFF`
             0xE2 => {
                 let address = 0xFF00 | (regs.c as u16);
-                bus[address] = regs.a;
+                bus.write(address, regs.a);
 
                 (1, 2)
             }
@@ -526,7 +526,7 @@ impl Cpu {
             // Load register A at address specified by immediate data
             0xEA => {
                 let immediate_data = bus.next_two(regs);
-                bus[immediate_data] = regs.a;
+                bus.write(immediate_data, regs.a);
 
                 (3, 4)
             }
@@ -536,7 +536,7 @@ impl Cpu {
             // register A
             0xF0 => {
                 let address = 0xFF00 | (bus.next_one(regs) as u16);
-                regs.a = bus[address];
+                regs.a = bus.read(address);
 
                 (2, 3)
             }
@@ -546,7 +546,7 @@ impl Cpu {
             // register A
             0xF2 => {
                 let address = 0xFF00 | (regs.c as u16);
-                regs.a = bus[address];
+                regs.a = bus.read(address);
 
                 (1, 2)
             }
@@ -591,7 +591,7 @@ impl Cpu {
             // Load specified address into register A
             0xFA => {
                 let immediate_data = bus.next_two(regs);
-                regs.a = bus[immediate_data];
+                regs.a = bus.read(immediate_data);
 
                 (3, 4)
             }

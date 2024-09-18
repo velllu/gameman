@@ -27,7 +27,7 @@ impl SpriteLayer {
 
 impl Layer for SpriteLayer {
     fn is_layer_enabled(&self, bus: &Bus) -> bool {
-        if bus[LCDC].get_bit(1) {
+        if bus.read(LCDC).get_bit(1) {
             return true;
         }
 
@@ -49,7 +49,7 @@ impl Layer for SpriteLayer {
         self.sprite_to_draw = None;
 
         // Sprites can either be 8 pixels high or 16 pixels high
-        let sprite_height: u8 = match bus[LCDC].get_bit(2) {
+        let sprite_height: u8 = match bus.read(LCDC).get_bit(2) {
             false => 8,
             true => 16,
         };
@@ -102,7 +102,7 @@ impl Layer for SpriteLayer {
             address ^= 0b0000_0000_0000_1110;
         }
 
-        let mut tile_data = bus[address];
+        let mut tile_data = bus.read(address);
 
         // When horizontally flipping we have to reverse the read byte
         if sprite_to_draw.x_flip {
@@ -138,8 +138,8 @@ impl Layer for SpriteLayer {
 
         // Palette coloring (https://gbdev.io/pandocs/Palettes.html)
         let palette = match sprite_to_draw.palette {
-            Palette::OBP0 => bus[OBP0],
-            Palette::OBP1 => bus[OBP1],
+            Palette::OBP0 => bus.read(OBP0),
+            Palette::OBP1 => bus.read(OBP1),
         };
 
         let id_1 = bools_to_color(palette.get_bit(3), palette.get_bit(2));

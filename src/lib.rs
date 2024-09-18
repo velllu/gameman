@@ -1,7 +1,7 @@
 #![forbid(unsafe_code)]
 
 use bus::{Bus, BusError};
-use consts::{bus::ROM_SIZE, joypad::JOYP};
+use consts::joypad::JOYP;
 use cpu::Cpu;
 use flags::Flags;
 use gpu::{
@@ -52,7 +52,7 @@ impl GameBoy {
         })
     }
 
-    pub fn new_from_rom_array(rom: [u8; ROM_SIZE]) -> Self {
+    pub fn new_from_rom_array(rom: Vec<u8>) -> Self {
         Self {
             bus: Bus::new_from_rom_array(rom),
             cpu: Cpu::new(),
@@ -102,6 +102,6 @@ impl GameBoy {
         }
 
         // JOYPAD
-        self.bus[JOYP] = self.joypad.to_byte(&self.bus);
+        self.bus.write(JOYP, self.joypad.to_byte(&self.bus));
     }
 }
