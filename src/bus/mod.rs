@@ -1,9 +1,11 @@
 use std::{error::Error, fmt::Display, fs::File, io::Read};
 
+use mbc1::Mbc1;
 use mbc_no::NoMbc;
 
 use crate::{common::merge_two_u8s_into_u16, consts::bus::*, registers::Registers};
 
+mod mbc1;
 mod mbc_no;
 
 pub trait Mbc: Send {
@@ -63,7 +65,7 @@ impl Bus {
 
         // Actual returning
         Ok(Self {
-            mbc: Box::new(NoMbc::new(rom)),
+            mbc: new_mbc(rom),
             video_ram: [0u8; VIDEO_RAM_SIZE],
             work_ram: [0u8; WORK_RAM_SIZE],
             eom: [0u8; EOM_SIZE],
@@ -77,7 +79,7 @@ impl Bus {
 
     pub(crate) fn new_from_rom_array(rom: Vec<u8>) -> Self {
         Self {
-            mbc: Box::new(NoMbc::new(rom)),
+            mbc: new_mbc(rom),
             video_ram: [0u8; VIDEO_RAM_SIZE],
             work_ram: [0u8; WORK_RAM_SIZE],
             eom: [0u8; EOM_SIZE],
@@ -156,6 +158,18 @@ impl Bus {
         for i in 0..difference {
             self.write(0xFE00 + i, self.read(oam_dma_start + i));
         }
+    }
+}
+
+/// Creates a specific MBC cartridge based on the header data from the rom
+pub(crate) fn new_mbc(rom: Vec<u8>) -> Box<dyn Mbc> {
+    let mbc_type = *rom.get(0x147).unwrap_or(&0) as usize;
+
+    match mbc_type {
+        0 => Box::new(NoMbc::new(rom)),
+        1 | 2 | 3 => Box::new(Mbc1::new(rom)),
+
+        _ => Box::new(NoMbc::new(rom)),
     }
 }
 

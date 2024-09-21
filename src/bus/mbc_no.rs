@@ -1,8 +1,9 @@
 //! The most simple MBC, it just has rom and external ram, no banks or anything
 
-use super::{vector_to_array, Mbc, EXTERNAL_RAM_SIZE};
+use super::{vector_to_array, Mbc};
 
 const ROM_SIZE: usize = 0x8000;
+const EXTERNAL_RAM_SIZE: usize = 0x2000;
 
 pub(crate) struct NoMbc {
     rom: [u8; ROM_SIZE],

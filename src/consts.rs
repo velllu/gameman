@@ -5,7 +5,6 @@ pub mod bus {
     pub const IO_START: usize = 0xFF00;
     pub const VIDEO_RAM_SIZE: usize = 8192;
     pub const WORK_RAM_SIZE: usize = 8192;
-    pub const EXTERNAL_RAM_SIZE: usize = 8192;
     pub const UNUSABLE_RAM_SIZE: usize = 96;
     pub const DMA: u16 = 0xFF46;
 }
