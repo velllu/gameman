@@ -151,7 +151,7 @@ impl Mbc1 {
     fn calculate_ram_address(&self, address: u16) -> usize {
         match self.banking_mode {
             // If it's simple we just use bank 0
-            BankingMode::Simple => address as usize,
+            BankingMode::Simple => address as usize % self.ram_size,
 
             // Otherwise we use the ram bank number
             BankingMode::Advanced => {
