@@ -23,14 +23,13 @@ impl Cpu {
         bus: &mut Bus,
     ) -> (Bytes, Cycles) {
         if self.halt {
-            self.halt = false;
             return (0, 1);
         }
 
         // TODO: Fix timing on instruction with register `6`, they should have a clock more
         match opcode {
             // Instruction `NOP`
-            0x00 => (1, 0),
+            0x00 => (1, 1),
 
             // Instruction `LD rr, immediate data` - 00rr0001
             // Loads immediate data into given register couple

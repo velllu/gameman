@@ -1,11 +1,7 @@
 use crate::{
     bus::Bus,
     common::{split_u16_into_two_u8s, Bit},
-    consts::{
-        cpu::{IE, IF},
-        gpu::{LY, LYC, STAT},
-    },
-    gpu::Gpu,
+    consts::cpu::IF,
     registers::Registers,
 };
 
@@ -22,47 +18,30 @@ pub(crate) enum Interrupt {
     /// - STAT.5: Just entered PPU mode 2
     /// - STAT.6: LYC == LY
     Stat = 1,
+
+    /// Triggers when TIMA register overflows
+    Timer = 2,
 }
 
 impl Cpu {
-    /// Each interrupt has a condition on wheter it gets activated or not, when its bit
-    /// in IE is activated and the condition applies, we start Interrupt Handling
-    pub(crate) fn execute_interrupts(
-        &mut self,
-        gpu: &Gpu,
-        registers: &mut Registers,
-        bus: &mut Bus,
-    ) {
-        let interrupt_enable = bus.read(IE);
+    /// We start executing an interrupt when both the interrupt enable and interrupt flag
+    /// are enabled
+    pub(crate) fn execute_interrupts(&mut self, registers: &mut Registers, bus: &mut Bus) {
+        let interrupt_enable = bus.ie;
+        let interrupt_flag = bus.read(IF);
 
-        if interrupt_enable.get_bit(0) && gpu.has_just_entered_vblank {
+        if interrupt_enable.get_bit(0) && interrupt_flag.get_bit(0) {
             self.handle_interrupt(Interrupt::VBlank, registers, bus);
             return;
         }
 
-        if interrupt_enable.get_bit(1) {
-            let stat = bus.read(STAT);
+        if interrupt_enable.get_bit(1) && interrupt_flag.get_bit(1) {
+            self.handle_interrupt(Interrupt::Stat, registers, bus);
+            return;
+        }
 
-            if stat.get_bit(3) && gpu.has_just_entered_hblank {
-                self.handle_interrupt(Interrupt::Stat, registers, bus);
-                return;
-            }
-
-            if stat.get_bit(4) && gpu.has_just_entered_vblank {
-                self.handle_interrupt(Interrupt::Stat, registers, bus);
-                return;
-            }
-
-            if stat.get_bit(5) && gpu.has_just_entered_oam_scan {
-                self.handle_interrupt(Interrupt::Stat, registers, bus);
-                return;
-            }
-
-            if stat.get_bit(6) && bus.read(LY) == bus.read(LYC) {
-                self.handle_interrupt(Interrupt::Stat, registers, bus);
-                return;
-            }
-
+        if interrupt_enable.get_bit(2) && interrupt_flag.get_bit(2) {
+            self.handle_interrupt(Interrupt::Timer, registers, bus);
             return;
         }
     }
@@ -80,6 +59,9 @@ impl Cpu {
             // We disable IME so interrupts are not called immediately, interrupts
             // typically end with a `RETI` instruction that turns this back on
             self.ime = false;
+
+            // And we also un-halt the CPU
+            self.halt = false;
         }
     }
 
@@ -88,6 +70,7 @@ impl Cpu {
         let return_address = match interrupt {
             Interrupt::VBlank => 0x40,
             Interrupt::Stat => 0x48,
+            Interrupt::Timer => 0x50,
         };
 
         // This is like the call instruction but we don't subtract three

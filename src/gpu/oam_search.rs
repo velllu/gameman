@@ -1,4 +1,8 @@
-use crate::{common::Bit, GameBoy};
+use crate::{
+    common::Bit,
+    consts::{cpu::IF, gpu::STAT},
+    GameBoy,
+};
 
 use super::{
     pixel_transfer::sprite::{Palette, SpriteData},
@@ -7,7 +11,16 @@ use super::{
 
 impl GameBoy {
     pub(super) fn oam_search(&mut self) {
-        self.gpu.has_just_entered_oam_scan = self.gpu.ticks == 0;
+        // Setting interrupts
+        if self.gpu.ticks == 0 {
+            let interrupt_flag = self.bus.read(IF);
+            let stat = self.bus.read(STAT);
+
+            // Stat interrupt. Stat.3 indicates OAM Search
+            if stat.get_bit(5) {
+                self.bus.write(IF, interrupt_flag | 0b00000010);
+            }
+        }
 
         if self.gpu.ticks == 0 {
             self.gpu.y = 0;

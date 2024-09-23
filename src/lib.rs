@@ -81,7 +81,7 @@ impl GameBoy {
 
         // CPU - Interrupts
         self.cpu
-            .execute_interrupts(&self.gpu, &mut self.registers, &mut self.bus);
+            .execute_interrupts(&mut self.registers, &mut self.bus);
 
         // CPU - OAM DMA Transfer
         if self.bus.needs_to_dispatch_oam_dma {
@@ -89,8 +89,9 @@ impl GameBoy {
             self.bus.needs_to_dispatch_oam_dma = false;
         }
 
-        // CPU - DIV Register
+        // CPU - Timer registers
         self.cpu.update_div_register(&mut self.bus, cycles);
+        self.cpu.update_tima_register(&mut self.bus, cycles);
 
         // GPU
         for _ in 0..(cycles * 4) {

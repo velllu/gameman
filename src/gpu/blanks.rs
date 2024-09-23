@@ -1,10 +1,26 @@
-use crate::GameBoy;
+use crate::{
+    common::Bit,
+    consts::{
+        cpu::IF,
+        gpu::{LY, LYC, STAT},
+    },
+    GameBoy,
+};
 
 use super::GpuState;
 
 impl GameBoy {
     pub(super) fn hblank(&mut self) {
-        self.gpu.has_just_entered_hblank = self.gpu.ticks == 0;
+        // Setting interrupts
+        if self.gpu.ticks == 0 {
+            let interrupt_flag = self.bus.read(IF);
+            let stat = self.bus.read(STAT);
+
+            // Stat interrupt. Stat.3 indicates HBlank
+            if stat.get_bit(3) {
+                self.bus.write(IF, interrupt_flag | 0b00000010);
+            }
+        }
 
         if self.gpu.ticks == 0 {
             self.gpu.x = 0;
@@ -31,7 +47,26 @@ impl GameBoy {
         /// Amount of ticks needed to render a vblank line
         const VBLANK_LINE_TICKS: u16 = 456;
 
-        self.gpu.has_just_entered_vblank = self.gpu.ticks == 0;
+        // Setting interrupts
+        if self.gpu.ticks == 0 {
+            let mut interrupt_flag = self.bus.read(IF);
+            let stat = self.bus.read(STAT);
+
+            // VBlank interrupt
+            interrupt_flag |= 0b00000001;
+
+            // Stat interrupt. Stat.3 indicates VBlank
+            if stat.get_bit(4) {
+                interrupt_flag |= 0b00000010;
+            }
+
+            // Stat interrupt. We also need to check for LYC == LY
+            if stat.get_bit(6) && self.bus.read(LY) == self.bus.read(LYC) {
+                interrupt_flag |= 0b00000010;
+            }
+
+            self.bus.write(IF, interrupt_flag);
+        }
 
         if self.gpu.ticks == 0 {
             self.layers
