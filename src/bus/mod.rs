@@ -3,7 +3,11 @@ use std::{error::Error, fmt::Display, fs::File, io::Read};
 use mbc1::Mbc1;
 use mbc_no::NoMbc;
 
-use crate::{common::merge_two_u8s_into_u16, consts::bus::*, registers::Registers};
+use crate::{
+    common::merge_two_u8s_into_u16,
+    consts::{bus::*, cpu::DIV},
+    registers::Registers,
+};
 
 mod mbc1;
 mod mbc_no;
@@ -46,6 +50,10 @@ pub struct Bus {
 
     /// Gets true when the user writes to OAM DMA register
     pub needs_to_dispatch_oam_dma: bool,
+
+    /// Gets true when the emulator writes to DIV, this means that we must reset the div
+    /// register internal cycle counter
+    pub(crate) needs_to_reset_div_register: bool,
 }
 
 impl Bus {
@@ -74,6 +82,7 @@ impl Bus {
             io: new_io(),
             unusable_ram: [0u8; UNUSABLE_RAM_SIZE],
             needs_to_dispatch_oam_dma: false,
+            needs_to_reset_div_register: false,
         })
     }
 
@@ -88,6 +97,7 @@ impl Bus {
             io: new_io(),
             unusable_ram: [0u8; UNUSABLE_RAM_SIZE],
             needs_to_dispatch_oam_dma: false,
+            needs_to_reset_div_register: false,
         }
     }
 }
@@ -112,6 +122,16 @@ impl Bus {
 
     pub fn write(&mut self, address: u16, value: u8) {
         match address {
+            DMA => {
+                self.needs_to_dispatch_oam_dma = true;
+                self.io[0x46] = value;
+            }
+
+            DIV => {
+                self.needs_to_reset_div_register = true;
+                self.io[0x04] = 0;
+            }
+
             0x0000..=0x7FFF => self.mbc.signal_rom_write(address, value),
             0x8000..=0x9FFF => self.video_ram[(address - 0x8000) as usize] = value,
             0xA000..=0xBFFF => self.mbc.set_external_ram(address - 0xA000, value),
@@ -119,13 +139,7 @@ impl Bus {
             0xE000..=0xFDFF => self.work_ram[(address - 0xE000) as usize] = value,
             0xFE00..=0xFE9F => self.eom[(address - 0xFE00) as usize] = value,
             0xFEA0..=0xFEFF => self.unusable_ram[(address - 0xFEA0) as usize] = value,
-            0xFF00..=0xFF7F => {
-                if address == DMA {
-                    self.needs_to_dispatch_oam_dma = true;
-                }
-
-                self.io[(address - IO_START as u16) as usize] = value;
-            }
+            0xFF00..=0xFF7F => self.io[(address - IO_START as u16) as usize] = value,
             0xFF80..=0xFFFE => self.high_ram[(address - 0xFF80) as usize] = value,
             0xFFFF => self.ie = value,
         };

@@ -23,11 +23,11 @@ pub struct Cpu {
     /// Wheter or not the CPU is halted
     pub halt: bool,
 
-    /// This is increased after each cycle, it's used for the timers
-    pub(crate) div_register: u16,
+    /// A cycle counter for keeping track of when to increment the DIV register
+    pub(crate) div_cycle_counter: u8,
 
-    /// This is increased based on the TAC (timer control) register
-    pub(crate) tima_register: u16,
+    /// A cycle counter for keeping track of when to increment the TIMA register
+    pub(crate) tima_cycle_counter: u16,
 }
 
 impl Cpu {
@@ -35,19 +35,29 @@ impl Cpu {
         Self {
             ime: false,
             halt: false,
-            div_register: 0,
-            tima_register: 0,
+            div_cycle_counter: 1,
+            tima_cycle_counter: 0,
         }
     }
 
-    /// Increase the div register
+    /// Increment the div register every 64 cycles
     pub(crate) fn update_div_register(&mut self, bus: &mut Bus, cycles_num: u8) {
-        self.div_register = self.div_register.wrapping_add(cycles_num as u16);
+        // When we write to the div register we also reset the cycle counter
+        if bus.needs_to_reset_div_register {
+            // I don't know why this must be reset to 1, but it works!
+            self.div_cycle_counter = 1;
+            bus.needs_to_reset_div_register = false;
+        }
 
-        // While the div register is 16 bit, we only actually give the bus the higher 8
-        // bits, this means that it will increment after 256 cycles
-        let higher_byte = (self.div_register >> 8) as u8;
-        bus.write(DIV, higher_byte);
+        self.div_cycle_counter += cycles_num;
+
+        if self.div_cycle_counter >= 64 {
+            self.div_cycle_counter -= 64;
+
+            // Increment the DIV register, by using IO directly, otherwise writing to DIV
+            // will trigger a DIV reset
+            bus.io[0x04] = bus.read(DIV).wrapping_add(1);
+        }
     }
 
     /// Increse the tima register based on the contents of the timer control register
@@ -61,7 +71,7 @@ impl Cpu {
             return;
         }
 
-        self.tima_register += cycles_num as u16;
+        self.tima_cycle_counter += cycles_num as u16;
 
         // This is the threshold at which we increment the timer counter
         let increment_every = match (timer_control.get_bit(1), timer_control.get_bit(0)) {
@@ -71,8 +81,8 @@ impl Cpu {
             (true, true) => 64,
         };
 
-        if self.tima_register > increment_every {
-            self.tima_register -= increment_every;
+        if self.tima_cycle_counter > increment_every {
+            self.tima_cycle_counter -= increment_every;
 
             // When the timer counter overflows we have to run a timer interrupt
             let (result, has_overflown) = timer_counter.overflowing_add(1);
