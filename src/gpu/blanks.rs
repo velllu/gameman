@@ -14,6 +14,7 @@ impl GameBoy {
         if self.gpu.ticks == 0 {
             self.gpu.x = 0;
             self.gpu.y += 1;
+            self.gpu.dump_slice = true;
             self.gpu.fifo.clear();
 
             self.layers

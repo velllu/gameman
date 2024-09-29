@@ -82,7 +82,7 @@ impl Layer for BackgroundLayer {
         // X Scrolling, we remove pixels from the first slice of the line so all the next
         // tiles will be at an offset. It's important to clear the fifo when the line has
         // been rendered otherwise the offset could affect the next line too
-        if gpu.number_of_slices_pushed == 1 {
+        if gpu.number_of_slices_pushed == 0 {
             for _ in 0..(bus.read(SCX) % 8) {
                 slice.pop();
             }

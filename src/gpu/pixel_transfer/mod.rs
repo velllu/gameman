@@ -102,7 +102,7 @@ impl GameBoy {
             false => {
                 // This is where the X pointer would be if we always pushed 8 pixels at a
                 // time (which happens when SCX is not a multiple of 8)
-                self.gpu.virtual_x = (self.gpu.number_of_slices_pushed - 1) * 8;
+                self.gpu.virtual_x = self.gpu.number_of_slices_pushed * 8;
 
                 self.layers
                     .iter_mut()
@@ -149,11 +149,13 @@ impl GameBoy {
             };
         }
 
-        if self.gpu.number_of_slices_pushed == 0 {
-            slice.clear(); // The first slice is always dumped for some reason
+        if self.gpu.dump_slice {
+            slice.clear();
+            self.gpu.dump_slice = false;
+        } else {
+            self.gpu.number_of_slices_pushed += 1;
         }
 
-        self.gpu.number_of_slices_pushed += 1;
         self.gpu.fifo.append(&mut slice);
         self.cycle_state();
     }

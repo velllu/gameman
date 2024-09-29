@@ -48,7 +48,8 @@ impl Gpu {
             sprites: Vec::new(),
             pixel_transfer_state: PixelTransferState::GetTile,
             is_pixel_transfer_first_call: true,
-            number_of_slices_pushed: 1,
+            dump_slice: true,
+            number_of_slices_pushed: 0,
             virtual_x: 0,
         }
     }
@@ -74,6 +75,10 @@ pub struct Gpu {
     /// is decoupled from the layers, the layer don't need to track this, it's handled by
     /// the `pixel_transfer/mod.rs` file
     is_pixel_transfer_first_call: bool,
+
+    /// The first slice of pixels is always cut off, this boolean keeps track of wheter or
+    /// not it has been dumped
+    dump_slice: bool,
 
     /// The number of slices that have been pushed without counting the X Scrolling
     number_of_slices_pushed: u8,
