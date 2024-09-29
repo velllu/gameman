@@ -85,8 +85,6 @@ impl GameBoy {
             self.gpu.state = GpuState::HBlank;
             self.gpu.ticks = 0;
             self.gpu.number_of_slices_pushed = 0;
-            self.gpu.x = 0;
-            self.gpu.y += 1;
 
             return;
         }
@@ -102,7 +100,6 @@ impl GameBoy {
                 .for_each(|layer| layer.get_tile_step_1(&self.gpu, &self.bus)),
 
             false => {
-                // TODO: Figure out why this is needed, it's driving me crazy
                 // This is where the X pointer would be if we always pushed 8 pixels at a
                 // time (which happens when SCX is not a multiple of 8)
                 self.gpu.virtual_x = (self.gpu.number_of_slices_pushed - 1) * 8;
