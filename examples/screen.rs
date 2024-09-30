@@ -1,8 +1,3 @@
-use std::{
-    sync::{Arc, Mutex},
-    thread,
-};
-
 use gameman::{
     consts::display::{DISPLAY_SIZE_X, DISPLAY_SIZE_Y},
     gpu::Color,
@@ -29,24 +24,11 @@ async fn main() {
     }
 
     let rom_path = args.last().unwrap();
-
-    // We need to make the emulator run on a separate thread, because macroquad's
-    // `next_frame()` uses vsync, so the emulator will run based on your monitor refresh
-    // rate, and it will be insanelyyy slow, my 60hz monitor took 10 minutes to render
-    // ~10,000 CPU instructions, this is so fast that the same runs in <0.2s.
-    // Two `Arc`s because one is for the "running" thread and one for the "rendering"
-    // thread
-    let gameboy = Arc::new(Mutex::new(GameBoy::new(&rom_path).unwrap()));
-    let gameboy_clone = gameboy.clone();
+    let mut gameboy = GameBoy::new(&rom_path).unwrap();
 
     let mut image = Image::gen_image_color(DISPLAY_SIZE_X as u16, DISPLAY_SIZE_Y as u16, WHITE);
     let texture = Texture2D::from_image(&image);
     texture.set_filter(FilterMode::Nearest); // without this it will be blurry
-
-    // "Running" thread
-    thread::spawn(move || loop {
-        gameboy.lock().unwrap().step();
-    });
 
     let scale = 4.;
     let width = scale * DISPLAY_SIZE_X as f32;
@@ -59,7 +41,7 @@ async fn main() {
 
         clear_background(MacroColor::from_rgba(0x28, 0x28, 0x28, 255));
 
-        let mut gameboy = gameboy_clone.lock().unwrap();
+        gameboy.step_for_a_frame();
 
         gameboy.joypad.is_up_pressed = is_key_down(KeyCode::W);
         gameboy.joypad.is_left_pressed = is_key_down(KeyCode::A);
@@ -70,7 +52,7 @@ async fn main() {
         gameboy.joypad.is_a_pressed = is_key_down(KeyCode::O);
         gameboy.joypad.is_b_pressed = is_key_down(KeyCode::P);
 
-        for (y_coordinate, y) in gameboy.gpu.screen.iter().enumerate() {
+        for (y_coordinate, y) in gameboy.gpu.screen.iter_mut().enumerate() {
             for (x_coordinate, x) in y.iter().enumerate() {
                 image.set_pixel(
                     x_coordinate as u32,
@@ -84,8 +66,6 @@ async fn main() {
                 );
             }
         }
-
-        drop(gameboy);
 
         texture.update(&image);
         draw_texture_ex(

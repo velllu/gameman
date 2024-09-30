@@ -8,7 +8,7 @@ use gpu::{
     pixel_transfer::{
         background::BackgroundLayer, sprite::SpriteLayer, window::WindowLayer, Layer,
     },
-    Gpu,
+    Gpu, GpuState,
 };
 use joypad::Joypad;
 use registers::Registers;
@@ -68,7 +68,7 @@ impl GameBoy {
         }
     }
 
-    /// Parse and run the next opcode
+    /// Parse and run the next opcode, and tick the other pieces of hardware
     pub fn step(&mut self) {
         let opcode = self.bus.next(0, &self.registers);
 
@@ -104,5 +104,19 @@ impl GameBoy {
 
         // JOYPAD
         self.bus.write(JOYP, self.joypad.to_byte(&self.bus));
+    }
+
+    /// Calls the `step` function repeatedly and exists when a frame has finished
+    /// rendering
+    pub fn step_for_a_frame(&mut self) {
+        // Waiting for VBlank
+        while self.gpu.state != GpuState::VBlank {
+            self.step();
+        }
+
+        // ... and then we wait for OAM Search, otherwise it gets stuck in VBlank
+        while self.gpu.state != GpuState::OamSearch {
+            self.step();
+        }
     }
 }
