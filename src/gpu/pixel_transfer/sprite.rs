@@ -23,6 +23,10 @@ pub(crate) struct SpriteLayer {
     /// left, this is the number of pixels we have to remove to make it look like it's
     /// smoothly appearing
     left_side_shift: u8,
+
+    /// If the sprite we are rendering is as said above, halfway hblank and the first
+    /// pixels of the left side
+    is_sprite_left_side: bool,
 }
 
 impl SpriteLayer {
@@ -36,6 +40,7 @@ impl SpriteLayer {
             leftover_low: 0,
             leftover_high: 0,
             left_side_shift: 0,
+            is_sprite_left_side: false,
         }
     }
 }
@@ -77,18 +82,18 @@ impl Layer for SpriteLayer {
                 continue;
             }
 
-            // TODO: I don't know why it's specifically 7 and not 8, but if I put 8 in
-            // this it becomes very jittery
-            let mut sprite_x = sprite_to_draw.x.saturating_sub(7);
-            let sprite_y = sprite_to_draw.y - 16;
-
             // After coordinates `0xF9` the sprite starts to wrap around the screen
             if sprite_to_draw.x >= 0xF9 {
                 // we just handle it as if it was on coordinate 0, and we shift the pixels
                 // later
                 self.left_side_shift = 0xFF - sprite_to_draw.x + 1;
-                sprite_x = 0;
+                self.is_sprite_left_side = true;
             }
+
+            // TODO: I don't know why it's specifically 7 and not 8, but if I put 8 in
+            // this it becomes very jittery
+            let sprite_x = sprite_to_draw.x.saturating_sub(7);
+            let sprite_y = sprite_to_draw.y - 16;
 
             if (sprite_x..(sprite_x.wrapping_add(8))).contains(&gpu.virtual_x)
                 && (sprite_y..(sprite_y + sprite_height)).contains(&gpu.y)
@@ -134,10 +139,14 @@ impl Layer for SpriteLayer {
             tile_data = tile_data.reverse_bits();
         }
 
+        let mut tile_data = tile_data as u16;
+
         // We remove the first pixels to make the illusion of the sprite being halfway
         // on the screen TODO: This does not work whenever there's two sprite next to each
         // other that are both wrapping on the screen on the same line
-        let mut tile_data = (tile_data << self.left_side_shift) as u16;
+        if !self.is_sprite_left_side {
+            tile_data = (tile_data << self.left_side_shift) as u16;
+        }
 
         // This is the offset to make sprite that are not on a 8x8 grid render correctly.
         // So for example if a sprite is on coordinate "17", we need to move it 1 pixel to
@@ -151,8 +160,6 @@ impl Layer for SpriteLayer {
     }
 
     fn push_pixels(&mut self, _gpu: &Gpu, bus: &Bus) -> Vec<PixelData> {
-        self.left_side_shift = 0;
-
         if !self.is_layer_enabled(bus) || self.rendered_sprites > 10 {
             return EMPTY_SLICE.into();
         }
