@@ -5,13 +5,24 @@ use crate::{
     gpu::{pixel_transfer::bytes_to_slice, Color, Gpu, PixelData, Priority},
 };
 
-use super::{bools_to_color, Layer};
+use super::{bools_to_color, Layer, EMPTY_SLICE};
 
 pub(crate) struct SpriteLayer {
     sprite_to_draw: Option<SpriteData>,
     rendered_sprites: u8,
-    tile_data_low: u8,
-    tile_data_high: u8,
+    tile_data_low: u16,
+    tile_data_high: u16,
+
+    // When a sprite is cut off because it's not on the 8x8 grid, the data that got cut
+    // off is stored in these variables so we can push it out later
+    leftover_palette: Palette,
+    leftover_low: u8,
+    leftover_high: u8,
+
+    /// When a sprite wraps around the rightmost part of the display and appears on the
+    /// left, this is the number of pixels we have to remove to make it look like it's
+    /// smoothly appearing
+    left_side_shift: u8,
 }
 
 impl SpriteLayer {
@@ -21,6 +32,10 @@ impl SpriteLayer {
             rendered_sprites: 0,
             tile_data_low: 0,
             tile_data_high: 0,
+            leftover_palette: Palette::OBP0,
+            leftover_low: 0,
+            leftover_high: 0,
+            left_side_shift: 0,
         }
     }
 }
@@ -56,16 +71,26 @@ impl Layer for SpriteLayer {
 
         // TODO: This is kinda ugly
         for sprite in &gpu.sprites {
-            if sprite.x < 16 || sprite.y < 16 {
+            let mut sprite_to_draw = sprite.clone();
+
+            if sprite.y < 16 {
                 continue;
             }
 
-            let mut sprite_to_draw = sprite.clone();
-
-            let sprite_x = sprite_to_draw.x - 16;
+            // TODO: I don't know why it's specifically 7 and not 8, but if I put 8 in
+            // this it becomes very jittery
+            let mut sprite_x = sprite_to_draw.x.saturating_sub(7);
             let sprite_y = sprite_to_draw.y - 16;
 
-            if (sprite_x..(sprite_x + 8)).contains(&gpu.x)
+            // After coordinates `0xF9` the sprite starts to wrap around the screen
+            if sprite_to_draw.x >= 0xF9 {
+                // we just handle it as if it was on coordinate 0, and we shift the pixels
+                // later
+                self.left_side_shift = 0xFF - sprite_to_draw.x + 1;
+                sprite_x = 0;
+            }
+
+            if (sprite_x..(sprite_x.wrapping_add(8))).contains(&gpu.virtual_x)
                 && (sprite_y..(sprite_y + sprite_height)).contains(&gpu.y)
             {
                 // We are rendering the top of a tall sprite
@@ -109,52 +134,69 @@ impl Layer for SpriteLayer {
             tile_data = tile_data.reverse_bits();
         }
 
+        // We remove the first pixels to make the illusion of the sprite being halfway
+        // on the screen TODO: This does not work whenever there's two sprite next to each
+        // other that are both wrapping on the screen on the same line
+        let mut tile_data = (tile_data << self.left_side_shift) as u16;
+
+        // This is the offset to make sprite that are not on a 8x8 grid render correctly.
+        // So for example if a sprite is on coordinate "17", we need to move it 1 pixel to
+        // the right then how it already is
+        tile_data = (tile_data as u16).rotate_right(sprite_to_draw.x as u32 % 8);
+
         match is_high_part {
-            false => self.tile_data_low = tile_data,
-            true => self.tile_data_high = tile_data,
+            false => self.tile_data_low = tile_data as u16,
+            true => self.tile_data_high = tile_data as u16,
         };
     }
 
     fn push_pixels(&mut self, _gpu: &Gpu, bus: &Bus) -> Vec<PixelData> {
-        if !self.is_layer_enabled(bus)
-            || self.sprite_to_draw.is_none()
-            || self.rendered_sprites >= 10
-        {
-            // Return 8 blank pixels
-            return vec![
-                PixelData {
-                    color: Color::Light,
-                };
-                8
-            ];
+        self.left_side_shift = 0;
+
+        if !self.is_layer_enabled(bus) || self.rendered_sprites > 10 {
+            return EMPTY_SLICE.into();
         }
 
-        let sprite_to_draw = match self.sprite_to_draw {
-            Some(sprite) => sprite,
-            _ => unreachable!(),
-        };
+        // When we rendered some of a sprite but not all of it and there's no sprite left
+        // to render, we just push the other half of the sprite
+        if self.sprite_to_draw.is_none() && (self.leftover_high != 0 || self.leftover_low != 0) {
+            let mut leftover_slice = bytes_to_slice(
+                (self.tile_data_low >> 8) as u8,
+                (self.tile_data_high >> 8) as u8,
+            );
 
-        let mut slice = bytes_to_slice(self.tile_data_low, self.tile_data_high);
+            apply_palette_to_slice(&mut leftover_slice, self.leftover_palette, bus);
 
-        // Palette coloring (https://gbdev.io/pandocs/Palettes.html)
-        let palette = match sprite_to_draw.palette {
-            Palette::OBP0 => bus.read(OBP0),
-            Palette::OBP1 => bus.read(OBP1),
-        };
+            self.leftover_low = 0;
+            self.leftover_high = 0;
 
-        let id_1 = bools_to_color(palette.get_bit(3), palette.get_bit(2));
-        let id_2 = bools_to_color(palette.get_bit(5), palette.get_bit(4));
-        let id_3 = bools_to_color(palette.get_bit(7), palette.get_bit(6));
-
-        for pixel_data in &mut slice {
-            pixel_data.color = match pixel_data.color {
-                Color::MediumlyLight => id_1,
-                Color::MediumlyDark => id_2,
-                Color::Dark => id_3,
-
-                Color::Light => Color::Light, // for sprites, light is transparent
-            }
+            self.rendered_sprites += 1;
+            return leftover_slice;
         }
+
+        let Some(sprite_to_draw) = self.sprite_to_draw else {
+            return EMPTY_SLICE.into();
+        };
+
+        // When we rendered some of a sprite but not all of it but we also have another
+        // sprite to render on the same line, in that case we OR them together so the
+        // other half of the sprite and the other sprite we have to render look seamless
+        if self.leftover_low != 0 || self.leftover_high != 0 {
+            self.tile_data_low |= self.leftover_low as u16;
+            self.tile_data_high |= self.leftover_high as u16;
+        }
+
+        let mut slice = bytes_to_slice(
+            (self.tile_data_low & 0xFF) as u8,
+            (self.tile_data_high & 0xFF) as u8,
+        );
+
+        self.leftover_palette = sprite_to_draw.palette;
+        apply_palette_to_slice(&mut slice, sprite_to_draw.palette, bus);
+
+        // The leftover bytes are just the parts of the slice we haven't rendered yet
+        self.leftover_low = (self.tile_data_low >> 8) as u8;
+        self.leftover_high = (self.tile_data_high >> 8) as u8;
 
         self.rendered_sprites += 1;
         slice
@@ -162,6 +204,35 @@ impl Layer for SpriteLayer {
 
     fn at_hblank(&mut self, _bus: &Bus, _gpu: &Gpu) {
         self.rendered_sprites = 0;
+
+        // This makes it so sprite don't reappear from the left side when they are clipped
+        // on the right side of the screen
+        self.leftover_low = 0;
+        self.leftover_high = 0;
+        self.tile_data_low = 0;
+        self.tile_data_high = 0;
+    }
+}
+
+/// Takes in a slice and colors it according to a palette
+fn apply_palette_to_slice(slice: &mut Vec<PixelData>, palette: Palette, bus: &Bus) {
+    let palette = match palette {
+        Palette::OBP0 => bus.read(OBP0),
+        Palette::OBP1 => bus.read(OBP1),
+    };
+
+    let id_1 = bools_to_color(palette.get_bit(3), palette.get_bit(2));
+    let id_2 = bools_to_color(palette.get_bit(5), palette.get_bit(4));
+    let id_3 = bools_to_color(palette.get_bit(7), palette.get_bit(6));
+
+    for pixel_data in slice {
+        pixel_data.color = match pixel_data.color {
+            Color::MediumlyLight => id_1,
+            Color::MediumlyDark => id_2,
+            Color::Dark => id_3,
+
+            Color::Light => Color::Light, // for sprites, light is transparent
+        }
     }
 }
 

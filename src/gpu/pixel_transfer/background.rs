@@ -5,13 +5,19 @@ use crate::{
     gpu::{pixel_transfer::bytes_to_slice, Color, Gpu, PixelData, Priority},
 };
 
-use super::{bools_to_color, vuza_gate, Layer};
+use super::{bools_to_color, vuza_gate, Layer, EMPTY_SLICE};
 
 pub(crate) struct BackgroundLayer {
     lcdc_3: bool,
     tile_id: u8,
-    tile_data_low: u8,
-    tile_data_high: u8,
+    tile_data_low: u16,
+    tile_data_high: u16,
+
+    // When scrolling the background layer with SCX, if SCX is not a multiple of 8, we
+    // sometimes need to break multiple tiles in more parts and render them 8 pixels at a
+    // time. These contain the data of the tiles we cut off
+    leftover_low: u8,
+    leftover_high: u8,
 }
 
 impl BackgroundLayer {
@@ -21,6 +27,8 @@ impl BackgroundLayer {
             tile_id: 0,
             tile_data_low: 0,
             tile_data_high: 0,
+            leftover_low: 0,
+            leftover_high: 0,
         }
     }
 }
@@ -60,33 +68,44 @@ impl Layer for BackgroundLayer {
             | (bus.read(LY).wrapping_add(bus.read(SCY)) as u16 % 8) << 1
             | is_high_part as u16;
 
+        let tile_data = bus.read(address);
+
+        // We need to invert SCX otherwise it scrolls in the wrong direction
+        let inverted_scx = 8 - (bus.read(SCX) % 8);
+        let tile_data: u16 = (tile_data as u16).rotate_right(inverted_scx as u32);
+
         match is_high_part {
-            false => self.tile_data_low = bus.read(address),
-            true => self.tile_data_high = bus.read(address),
+            false => self.tile_data_low = tile_data,
+            true => self.tile_data_high = tile_data,
         }
     }
 
     fn push_pixels(&mut self, gpu: &Gpu, bus: &Bus) -> Vec<PixelData> {
         if !self.is_layer_enabled(bus) {
-            // Return 8 blank pixels
-            return vec![
-                PixelData {
-                    color: Color::Light,
-                };
-                8
-            ];
+            return EMPTY_SLICE.into();
         }
 
-        let mut slice = bytes_to_slice(self.tile_data_low, self.tile_data_high);
-
-        // X Scrolling, we remove pixels from the first slice of the line so all the next
-        // tiles will be at an offset. It's important to clear the fifo when the line has
-        // been rendered otherwise the offset could affect the next line too
         if gpu.number_of_slices_pushed == 0 {
-            for _ in 0..(bus.read(SCX) % 8) {
-                slice.pop();
-            }
+            // We only need to "shift" for the first slice, we don't need to shift every
+            // single tile otherwise the tiles won't look continous
+            self.leftover_low = (self.tile_data_low >> 8) as u8;
+            self.leftover_high = (self.tile_data_high >> 8) as u8;
+
+            return vec![];
         }
+
+        // We chain together the slices
+        self.tile_data_low |= self.leftover_low as u16;
+        self.tile_data_high |= self.leftover_high as u16;
+
+        let mut slice = bytes_to_slice(
+            (self.tile_data_low & 0xFF) as u8,
+            (self.tile_data_high & 0xFF) as u8,
+        );
+
+        // The leftover bytes are just the parts of the slice we haven't rendered yet
+        self.leftover_low = (self.tile_data_low >> 8) as u8;
+        self.leftover_high = (self.tile_data_high >> 8) as u8;
 
         // Palette coloring (https://gbdev.io/pandocs/Palettes.html)
         let palette = bus.read(BGP);

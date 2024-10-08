@@ -223,3 +223,8 @@ fn mix_above_light(first_slice: &[PixelData], second_slice: &[PixelData]) -> Vec
 
     new_slice
 }
+
+/// An eight pixel blank line
+pub(super) const EMPTY_SLICE: [PixelData; 8] = [PixelData {
+    color: Color::Light,
+}; 8];

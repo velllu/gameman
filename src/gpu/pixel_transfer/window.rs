@@ -5,10 +5,10 @@ use crate::{
         display::{DISPLAY_SIZE_X, DISPLAY_SIZE_Y},
         gpu::{LCDC, WX, WY},
     },
-    gpu::{Color, Gpu, PixelData, Priority},
+    gpu::{Gpu, PixelData, Priority},
 };
 
-use super::{bytes_to_slice, vuza_gate, Layer};
+use super::{bytes_to_slice, vuza_gate, Layer, EMPTY_SLICE};
 
 pub(crate) struct WindowLayer {
     lcdc_6: bool,
@@ -54,8 +54,12 @@ impl Layer for WindowLayer {
     fn get_tile_step_2(&mut self, gpu: &Gpu, bus: &Bus) {
         // This is `-7` because WX as an offset of 7, anything below that will not be
         // rendered
-        let window_x: i32 = gpu.virtual_x as i32 - (bus.read(WX) as i32 - 7);
-        let window_y: i32 = self.window_ly as i32 - bus.read(WY) as i32;
+        let mut window_x = gpu.virtual_x as i32 - (bus.read(WX) as i32 - 7);
+        let window_y = self.window_ly as i32 - bus.read(WY) as i32;
+
+        // We remove eight from the window x because `virtual_x` goes from 0-168 for some
+        // reason. TODO: Investigate why this is needed and remove it
+        window_x = window_x.saturating_sub(8);
 
         if window_x.is_negative() || window_y.is_negative() {
             self.tile_id = 0;
@@ -95,13 +99,7 @@ impl Layer for WindowLayer {
 
     fn push_pixels(&mut self, _gpu: &Gpu, bus: &Bus) -> Vec<PixelData> {
         if !self.is_layer_enabled(bus) {
-            // Return 8 blank pixels
-            return vec![
-                PixelData {
-                    color: Color::Light,
-                };
-                8
-            ];
+            return EMPTY_SLICE.into();
         }
 
         bytes_to_slice(self.tile_data_low, self.tile_data_high)
