@@ -107,6 +107,10 @@ pub enum GpuState {
 #[derive(Clone, Copy, Debug)]
 pub(crate) struct PixelData {
     pub(crate) color: Color,
+
+    /// This dictates the order of pixel drawing, check the code for sprite mixing in
+    /// `pixel_transfer/mod.rs` for more info
+    pub(crate) z_index: u8,
 }
 
 #[derive(Clone, Copy)]

@@ -132,19 +132,14 @@ impl GameBoy {
             return;
         }
 
-        let mut slice: Vec<PixelData> = vec![
-            PixelData {
-                color: Color::Light
-            };
-            8
-        ];
+        let mut slice: Vec<PixelData> = EMPTY_SLICE.into();
 
         for layer in self.layers.iter_mut() {
             let new_slice = layer.push_pixels(&self.gpu, &self.bus);
 
             slice = match layer.mix_with_layer_below() {
                 Priority::AlwaysAbove => new_slice,
-                Priority::TransparentLight => mix_slices(&slice, &new_slice),
+                Priority::TransparentLight => mix_with_z_index(&slice, &new_slice),
                 Priority::AboveLight => mix_above_light(&slice, &new_slice),
             };
         }
@@ -175,6 +170,7 @@ fn bytes_to_slice(low: u8, high: u8) -> Vec<PixelData> {
     for i in 0..8 {
         pixel_data.push(PixelData {
             color: bools_to_color(high.get_bit(i as u8), low.get_bit(i as u8)),
+            z_index: 0,
         });
     }
 
@@ -196,28 +192,31 @@ pub(super) fn vuza_gate(x: u8, y: u8) -> u16 {
     !((x & 0x10) != 0 || (y & 0x80) != 0) as u16
 }
 
-fn mix_slices(first_slice: &[PixelData], second_slice: &[PixelData]) -> Vec<PixelData> {
+fn mix_with_z_index(below_slice: &[PixelData], above_slice: &[PixelData]) -> Vec<PixelData> {
     let mut new_slice: Vec<PixelData> = Vec::new();
 
-    for (first_pixel, second_pixel) in first_slice.iter().zip(second_slice) {
-        if second_pixel.color == Color::Light {
-            new_slice.push(*first_pixel);
+    for (below_pixel, above_pixel) in below_slice.iter().zip(above_slice) {
+        // We select the pixel based on the higher z index
+        if above_pixel.z_index > below_pixel.z_index {
+            new_slice.push(*above_pixel);
         } else {
-            new_slice.push(*second_pixel);
+            new_slice.push(*below_pixel);
         }
     }
 
     new_slice
 }
 
-fn mix_above_light(first_slice: &[PixelData], second_slice: &[PixelData]) -> Vec<PixelData> {
+fn mix_above_light(below_slice: &[PixelData], above_slice: &[PixelData]) -> Vec<PixelData> {
     let mut new_slice: Vec<PixelData> = Vec::new();
 
-    for (first_pixel, second_pixel) in first_slice.iter().zip(second_slice) {
-        if first_pixel.color == Color::Light {
-            new_slice.push(*second_pixel);
+    for (below_pixel, above_pixel) in below_slice.iter().zip(above_slice) {
+        // The above sprite will only show when the below sprite is light, no need to
+        // check for priority
+        if below_pixel.color == Color::Light {
+            new_slice.push(*above_pixel);
         } else {
-            new_slice.push(*first_pixel);
+            new_slice.push(*below_pixel);
         }
     }
 
@@ -227,4 +226,5 @@ fn mix_above_light(first_slice: &[PixelData], second_slice: &[PixelData]) -> Vec
 /// An eight pixel blank line
 pub(super) const EMPTY_SLICE: [PixelData; 8] = [PixelData {
     color: Color::Light,
+    z_index: 0,
 }; 8];

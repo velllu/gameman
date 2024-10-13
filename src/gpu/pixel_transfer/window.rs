@@ -97,16 +97,27 @@ impl Layer for WindowLayer {
         }
     }
 
-    fn push_pixels(&mut self, _gpu: &Gpu, bus: &Bus) -> Vec<PixelData> {
+    fn push_pixels(&mut self, gpu: &Gpu, bus: &Bus) -> Vec<PixelData> {
         if !self.is_layer_enabled(bus) {
             return EMPTY_SLICE.into();
         }
 
-        bytes_to_slice(self.tile_data_low, self.tile_data_high)
+        if !is_window_being_rendered(bus, gpu) {
+            return EMPTY_SLICE.into();
+        }
+
+        let mut slice = bytes_to_slice(self.tile_data_low, self.tile_data_high);
+
+        // The window needs to be rendered above the background
+        for pixel in &mut slice {
+            pixel.z_index = 1;
+        }
+
+        slice
     }
 
     fn at_hblank(&mut self, bus: &Bus, _gpu: &Gpu) {
-        if is_window_showing(bus) {
+        if is_window_in_bounds(bus) {
             self.window_ly = self.window_ly.wrapping_add(1);
         }
     }
@@ -116,8 +127,21 @@ impl Layer for WindowLayer {
     }
 }
 
+/// If the windows is currently being rendered at the current position
+fn is_window_being_rendered(bus: &Bus, gpu: &Gpu) -> bool {
+    if bus.read(WX) as usize > gpu.virtual_x as usize {
+        return false;
+    }
+
+    if bus.read(WY) as usize > gpu.y as usize {
+        return false;
+    }
+
+    true
+}
+
 /// If WX and WY are inside the screen bounds
-fn is_window_showing(bus: &Bus) -> bool {
+fn is_window_in_bounds(bus: &Bus) -> bool {
     if (bus.read(WX) as usize) >= DISPLAY_SIZE_X + 7 {
         return false;
     }

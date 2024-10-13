@@ -164,7 +164,7 @@ impl Layer for SpriteLayer {
             return EMPTY_SLICE.into();
         }
 
-        // When we rendered some of a sprite but not all of it and there's no sprite left
+        // When we render a part of a sprite but not all of it and there's no sprite left
         // to render, we just push the other half of the sprite
         if self.sprite_to_draw.is_none() && (self.leftover_high != 0 || self.leftover_low != 0) {
             let mut leftover_slice = bytes_to_slice(
@@ -185,13 +185,11 @@ impl Layer for SpriteLayer {
             return EMPTY_SLICE.into();
         };
 
-        // When we rendered some of a sprite but not all of it but we also have another
+        // When we render a part of a sprite but not all of it but we also have another
         // sprite to render on the same line, in that case we OR them together so the
         // other half of the sprite and the other sprite we have to render look seamless
-        if self.leftover_low != 0 || self.leftover_high != 0 {
-            self.tile_data_low |= self.leftover_low as u16;
-            self.tile_data_high |= self.leftover_high as u16;
-        }
+        self.tile_data_low |= self.leftover_low as u16;
+        self.tile_data_high |= self.leftover_high as u16;
 
         let mut slice = bytes_to_slice(
             (self.tile_data_low & 0xFF) as u8,
@@ -233,13 +231,19 @@ fn apply_palette_to_slice(slice: &mut Vec<PixelData>, palette: Palette, bus: &Bu
     let id_3 = bools_to_color(palette.get_bit(7), palette.get_bit(6));
 
     for pixel_data in slice {
+        // The Light pixels are transparent, so we give higher priority to every other
+        // color
+        if pixel_data.color != Color::Light {
+            pixel_data.z_index = 2;
+        }
+
+        // Sprites can still show Light pixels by mapping another color to Light
         pixel_data.color = match pixel_data.color {
+            Color::Light => Color::Light,
             Color::MediumlyLight => id_1,
             Color::MediumlyDark => id_2,
             Color::Dark => id_3,
-
-            Color::Light => Color::Light, // for sprites, light is transparent
-        }
+        };
     }
 }
 
