@@ -1,6 +1,7 @@
 use std::{error::Error, fmt::Display, fs::File, io::Read};
 
 use mbc1::Mbc1;
+use mbc3::Mbc3;
 use mbc_no::NoMbc;
 
 use crate::{
@@ -10,6 +11,7 @@ use crate::{
 };
 
 mod mbc1;
+mod mbc3;
 mod mbc_no;
 
 pub trait Mbc: Send {
@@ -180,8 +182,9 @@ pub(crate) fn new_mbc(rom: Vec<u8>) -> Box<dyn Mbc> {
     let mbc_type = *rom.get(0x147).unwrap_or(&0) as usize;
 
     match mbc_type {
-        0 => Box::new(NoMbc::new(rom)),
-        1 | 2 | 3 => Box::new(Mbc1::new(rom)),
+        0x00 => Box::new(NoMbc::new(rom)),
+        0x01 | 0x02 | 0x03 => Box::new(Mbc1::new(rom)),
+        0x0F | 0x10 | 0x11 | 0x12 | 0x13 => Box::new(Mbc3::new(rom)),
 
         _ => Box::new(NoMbc::new(rom)),
     }
@@ -229,4 +232,41 @@ pub(crate) fn vector_to_array<const SIZE: usize>(vec: Vec<u8>) -> [u8; SIZE] {
     }
 
     array
+}
+
+// Functions used by the MBCn files
+
+pub(super) const EXTERNAL_RAM_BANK_SIZE: usize = 8000;
+pub(super) const ROM_BANK_SIZE: usize = 0x4000;
+
+/// Calculates the new rom address based on the address the game tells us and the rom
+/// bank number
+pub(super) fn calculate_rom_address(rom_size: usize, address: u16, bank: usize) -> usize {
+    (bank * ROM_BANK_SIZE + address as usize) % rom_size
+}
+
+pub(super) fn calculate_ram_address(ram_size: usize, address: u16, bank: usize) -> usize {
+    (address as usize + EXTERNAL_RAM_BANK_SIZE * bank) % ram_size
+}
+
+/// Fetches the rom rize using the rom header data
+pub(super) fn get_rom_size(rom: &Vec<u8>) -> usize {
+    let rom_size_byte = *rom.get(0x148).unwrap_or(&0) as usize;
+
+    // This formula is from the pandocs
+    0x8000 * (1 << rom_size_byte)
+}
+
+/// Fetches the ram rize using the rom header data
+pub(super) fn get_ram_size(rom: &Vec<u8>) -> usize {
+    let ram_size_byte = *rom.get(0x149).unwrap_or(&0) as usize;
+
+    // This formula is from the pandocs
+    match ram_size_byte {
+        2 => EXTERNAL_RAM_BANK_SIZE,
+        3 => EXTERNAL_RAM_BANK_SIZE * 4,
+        4 => EXTERNAL_RAM_BANK_SIZE * 16,
+        5 => EXTERNAL_RAM_BANK_SIZE * 8,
+        0 | 1 | _ => 0,
+    }
 }

@@ -1,9 +1,8 @@
 use crate::common::Bit;
 
-use super::Mbc;
-
-const EXTERNAL_RAM_BANK_SIZE: usize = 8000;
-const ROM_BANK_SIZE: usize = 0x4000;
+use super::{
+    calculate_ram_address, calculate_rom_address, get_ram_size, get_rom_size, Mbc, ROM_BANK_SIZE,
+};
 
 enum BankingMode {
     Simple,
@@ -23,21 +22,8 @@ pub(crate) struct Mbc1 {
 
 impl Mbc for Mbc1 {
     fn new(mut rom: Vec<u8>) -> Self {
-        // In the header of the game there are bytes explaining the size of the rom and
-        // ram
-        let rom_size_byte = *rom.get(0x148).unwrap_or(&0) as usize;
-        let ram_size_byte = *rom.get(0x149).unwrap_or(&0) as usize;
-
-        // The rom size can be calculated by this formula but we'll have to hard-code the
-        // ram size
-        let rom_size = 0x8000 * (1 << rom_size_byte);
-        let ram_size = match ram_size_byte {
-            2 => EXTERNAL_RAM_BANK_SIZE,
-            3 => EXTERNAL_RAM_BANK_SIZE * 4,
-            4 => EXTERNAL_RAM_BANK_SIZE * 16,
-            5 => EXTERNAL_RAM_BANK_SIZE * 8,
-            0 | 1 | _ => 0,
-        };
+        let rom_size = get_rom_size(&rom);
+        let ram_size = get_ram_size(&rom);
 
         // Resizing given rom
         rom.resize(rom_size, 0);
@@ -49,7 +35,7 @@ impl Mbc for Mbc1 {
             rom,
             external_ram: ram,
             is_ram_enabled: false,
-            rom_bank_number: 1,
+            rom_bank_number: 0,
             ram_bank_number: 0,
             banking_mode: BankingMode::Simple,
             rom_size,
@@ -64,7 +50,7 @@ impl Mbc for Mbc1 {
             BankingMode::Simple => self.rom[address as usize],
             BankingMode::Advanced => {
                 let bank = self.ram_bank_number << 5;
-                let new_address = self.calculate_rom_address(address, bank);
+                let new_address = calculate_rom_address(self.rom_size, address, bank);
 
                 self.rom[new_address]
             }
@@ -73,8 +59,15 @@ impl Mbc for Mbc1 {
 
     /// Section 1 rom uses both the rom and ram bank number to calculate the new address
     fn get_rom_section_1(&self, address: u16) -> u8 {
-        let bank = (self.ram_bank_number << 5) | self.rom_bank_number;
-        let new_address = self.calculate_rom_address(address - ROM_BANK_SIZE as u16, bank);
+        let mut bank = (self.ram_bank_number << 5) | self.rom_bank_number;
+
+        // For a bug these are not accessible
+        if bank == 0x20 || bank == 0x40 || bank == 0x60 {
+            bank += 1;
+        }
+
+        let new_address =
+            calculate_rom_address(self.rom_size, address - ROM_BANK_SIZE as u16, bank);
 
         self.rom[new_address]
     }
@@ -140,12 +133,6 @@ impl Mbc for Mbc1 {
 }
 
 impl Mbc1 {
-    /// Calculates the new rom address based on the address the game tells us and the rom
-    /// bank number
-    fn calculate_rom_address(&self, address: u16, bank: usize) -> usize {
-        (bank * ROM_BANK_SIZE + address as usize) % self.rom_size
-    }
-
     /// Calculates the new ram address based on the address the game tells us and the ram
     /// banking mode
     fn calculate_ram_address(&self, address: u16) -> usize {
@@ -155,7 +142,7 @@ impl Mbc1 {
 
             // Otherwise we use the ram bank number
             BankingMode::Advanced => {
-                (address as usize + EXTERNAL_RAM_BANK_SIZE * self.ram_bank_number) % self.ram_size
+                calculate_ram_address(self.ram_size, address, self.ram_bank_number)
             }
         }
     }
