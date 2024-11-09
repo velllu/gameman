@@ -1,46 +1,48 @@
 use crate::{
+    bus::Bus,
     common::Bit,
     consts::{cpu::IF, gpu::STAT},
-    GameBoy,
 };
 
 use super::{
     pixel_transfer::sprite::{Palette, SpriteData},
-    GpuState, Priority,
+    Gpu, GpuState, Priority,
 };
 
-impl GameBoy {
-    pub(super) fn oam_search(&mut self) {
+impl Gpu {
+    pub(super) fn oam_search(&mut self, bus: &mut Bus) {
         // Setting interrupts
-        if self.gpu.ticks == 0 {
-            let interrupt_flag = self.bus.read(IF);
-            let stat = self.bus.read(STAT);
+        if self.ticks == 0 {
+            let interrupt_flag = bus.read(IF);
+            let stat = bus.read(STAT);
 
             // Stat interrupt. Stat.3 indicates OAM Search
             if stat.get_bit(5) {
-                self.bus.write(IF, interrupt_flag | 0b00000010);
+                bus.write(IF, interrupt_flag | 0b00000010);
             }
         }
 
-        if self.gpu.ticks == 0 {
-            self.gpu.y = 0;
-            self.gpu.sprites.clear();
+        if self.ticks == 0 {
+            self.y = 0;
+            self.sprites.clear();
 
             // We access sprites in reverse because the sprite with the lowest address has
             // the most priority
             for i in (0xFE00..0xFE9C).rev().step_by(4) {
-                self.gpu.sprites.push(self.get_sprite_data(i));
+                self.sprites.push(bus.get_sprite_data(i));
             }
         }
 
         self.switch_when_ticks(80, GpuState::PixelTransfer);
     }
+}
 
+impl Bus {
     fn get_sprite_data(&self, address: u16) -> SpriteData {
-        let y = self.bus.read(address - 3);
-        let x = self.bus.read(address - 2);
-        let tile_number = self.bus.read(address - 1);
-        let flags = self.bus.read(address);
+        let y = self.read(address - 3);
+        let x = self.read(address - 2);
+        let tile_number = self.read(address - 1);
+        let flags = self.read(address);
 
         SpriteData {
             y,

@@ -42,7 +42,6 @@ impl Cpu {
 
         if interrupt_enable.get_bit(2) && interrupt_flag.get_bit(2) {
             self.handle_interrupt(Interrupt::Timer, registers, bus);
-            return;
         }
     }
 

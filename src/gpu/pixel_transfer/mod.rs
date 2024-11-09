@@ -6,11 +6,14 @@ pub(crate) mod sprite;
 pub(crate) mod window;
 
 use super::{Color, Gpu, GpuState, PixelData, Priority};
-use crate::{bus::Bus, common::Bit, consts::display::DISPLAY_SIZE_X, GameBoy};
+use crate::{bus::Bus, common::Bit, consts::display::DISPLAY_SIZE_X};
 
 /// The GameBoy's GPU works by having three "layers", the background layer, the window
 /// layer and the sprite layer, this trait defines the parts that differ for every layer,
 /// the common parts are defined in this file.
+pub(crate) type Layers = [Box<dyn Layer>; 3];
+
+/// While being different, the layers all have the same interface
 #[allow(unused_variables)]
 pub(crate) trait Layer: Send {
     fn is_layer_enabled(&self, bus: &Bus) -> bool;
@@ -34,9 +37,9 @@ pub(super) enum PixelTransferState {
     PushPixels,
 }
 
-impl GameBoy {
+impl Gpu {
     fn cycle_state(&mut self) {
-        self.gpu.pixel_transfer_state = match self.gpu.pixel_transfer_state {
+        self.pixel_transfer_state = match self.pixel_transfer_state {
             PixelTransferState::GetTile => PixelTransferState::GetLowTileData,
             PixelTransferState::GetLowTileData => PixelTransferState::GetHighTileData,
             PixelTransferState::GetHighTileData => PixelTransferState::Sleep,
@@ -44,14 +47,14 @@ impl GameBoy {
             PixelTransferState::PushPixels => PixelTransferState::GetTile,
         };
 
-        self.gpu.is_pixel_transfer_first_call = true;
+        self.is_pixel_transfer_first_call = true;
     }
 
     /// Inverts the `is_first_call` field and returns the previous value, meant to be used
     /// in the pixel transfer states to check wheter to activate step 1 or step 2
     fn is_first_call(&mut self) -> bool {
-        self.gpu.is_pixel_transfer_first_call = !self.gpu.is_pixel_transfer_first_call;
-        !self.gpu.is_pixel_transfer_first_call
+        self.is_pixel_transfer_first_call = !self.is_pixel_transfer_first_call;
+        !self.is_pixel_transfer_first_call
     }
 
     /// In this state the pixels are getting fetched and put into the screen, it has 5
@@ -61,81 +64,81 @@ impl GameBoy {
     /// 3. Get high tile data
     /// 4. Sleep
     /// 5. Pushing pixels
+    ///
     /// This is a super helpful resource:
     /// https://github.com/ISSOtm/pandocs/blob/rendering-internals/src/Rendering_Internals.md
-    pub(super) fn pixel_transfer(&mut self) {
-        match self.gpu.pixel_transfer_state {
-            PixelTransferState::GetTile => self.get_tile(),
-            PixelTransferState::GetLowTileData => self.get_tile_data(false),
-            PixelTransferState::GetHighTileData => self.get_tile_data(true),
+    pub(super) fn pixel_transfer(&mut self, layers: &mut Layers, bus: &mut Bus) {
+        match self.pixel_transfer_state {
+            PixelTransferState::GetTile => self.get_tile(layers, bus),
+            PixelTransferState::GetLowTileData => self.get_tile_data(false, layers, bus),
+            PixelTransferState::GetHighTileData => self.get_tile_data(true, layers, bus),
             PixelTransferState::Sleep => self.sleep(),
-            PixelTransferState::PushPixels => self.push_pixels(),
+            PixelTransferState::PushPixels => self.push_pixels(layers, bus),
         }
 
         // Pop one pixel and display it
-        if let Some(pixel_data) = self.gpu.fifo.pop() {
-            self.gpu.screen[self.gpu.y as usize][self.gpu.x as usize] = pixel_data.color;
-            self.gpu.x += 1;
+        if let Some(pixel_data) = self.fifo.pop() {
+            self.screen[self.y as usize][self.x as usize] = pixel_data.color;
+            self.x += 1;
         }
 
         // TODO: Implement the OBJ penalty algorithm, relevant link:
         // https://gbdev.io/pandocs/Rendering.html
 
-        if self.gpu.x == DISPLAY_SIZE_X as u8 {
-            self.gpu.state = GpuState::HBlank;
-            self.gpu.ticks = 0;
-            self.gpu.number_of_slices_pushed = 0;
+        if self.x == DISPLAY_SIZE_X as u8 {
+            self.state = GpuState::HBlank;
+            self.ticks = 0;
+            self.number_of_slices_pushed = 0;
 
             return;
         }
 
-        self.gpu.ticks += 1;
+        self.ticks += 1;
     }
 
-    fn get_tile(&mut self) {
+    fn get_tile(&mut self, layers: &mut Layers, bus: &mut Bus) {
         match self.is_first_call() {
-            true => self
-                .layers
+            true => layers
                 .iter_mut()
-                .for_each(|layer| layer.get_tile_step_1(&self.gpu, &self.bus)),
+                .for_each(|layer| layer.get_tile_step_1(self, bus)),
 
             false => {
                 // This is where the X pointer would be if we always pushed 8 pixels at a
                 // time (which happens when SCX is not a multiple of 8)
-                self.gpu.virtual_x = self.gpu.number_of_slices_pushed * 8;
+                self.virtual_x = self.number_of_slices_pushed * 8;
 
-                self.layers
+                layers
                     .iter_mut()
-                    .for_each(|layer| layer.get_tile_step_2(&self.gpu, &self.bus));
+                    .for_each(|layer| layer.get_tile_step_2(self, bus));
 
                 self.cycle_state();
             }
         }
     }
 
-    fn get_tile_data(&mut self, is_high_part: bool) {
+    fn get_tile_data(&mut self, is_high_part: bool, layers: &mut Layers, bus: &mut Bus) {
         // This instruction takes two ticks, cpus are so fast that we can just do it all
         // in the second tick
         if self.is_first_call() {
             return;
         }
 
-        for layer in self.layers.iter_mut() {
-            layer.get_tile_data(is_high_part, &self.gpu, &self.bus);
+        for layer in layers.iter_mut() {
+            layer.get_tile_data(is_high_part, self, bus);
         }
 
         self.cycle_state();
     }
 
-    fn push_pixels(&mut self) {
-        if !self.gpu.fifo.is_empty() {
+    fn push_pixels(&mut self, layers: &mut Layers, bus: &mut Bus) {
+        if !self.fifo.is_empty() {
             return;
         }
 
         let mut slice: Vec<PixelData> = EMPTY_SLICE.into();
 
-        for layer in self.layers.iter_mut() {
-            let new_slice = layer.push_pixels(&self.gpu, &self.bus);
+        for layer in layers.iter_mut() {
+            let new_slice = layer.push_pixels(self, bus);
 
             slice = match layer.mix_with_layer_below() {
                 Priority::AlwaysAbove => new_slice,
@@ -144,14 +147,14 @@ impl GameBoy {
             };
         }
 
-        if self.gpu.dump_slice {
+        if self.dump_slice {
             slice.clear();
-            self.gpu.dump_slice = false;
+            self.dump_slice = false;
         } else {
-            self.gpu.number_of_slices_pushed += 1;
+            self.number_of_slices_pushed += 1;
         }
 
-        self.gpu.fifo.append(&mut slice);
+        self.fifo.append(&mut slice);
         self.cycle_state();
     }
 

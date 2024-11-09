@@ -2,56 +2,37 @@ mod blanks;
 mod oam_search;
 pub(crate) mod pixel_transfer;
 
-use pixel_transfer::sprite::SpriteData;
+use pixel_transfer::{sprite::SpriteData, Layers};
 
 use crate::{
+    bus::Bus,
     consts::{
         display::{DISPLAY_SIZE_X, DISPLAY_SIZE_Y},
         gpu::LY,
     },
-    GameBoy,
 };
 
 use self::pixel_transfer::PixelTransferState;
 
-impl GameBoy {
-    fn switch_when_ticks(&mut self, ticks: u16, new_state: GpuState) {
-        if self.gpu.ticks >= ticks {
-            self.gpu.state = new_state;
-            self.gpu.ticks = 0;
-        } else {
-            self.gpu.ticks += 1;
-        }
-    }
-
-    pub(crate) fn tick(&mut self) {
-        match self.gpu.state {
-            GpuState::OamSearch => self.oam_search(),
-            GpuState::PixelTransfer => self.pixel_transfer(),
-            GpuState::HBlank => self.hblank(),
-            GpuState::VBlank => self.vblank(),
-        }
-
-        self.bus.write(LY, self.gpu.y);
-    }
-}
-
 impl Gpu {
-    pub(crate) fn new() -> Self {
-        Self {
-            screen: [[Color::Light; DISPLAY_SIZE_X]; DISPLAY_SIZE_Y],
-            ticks: 0,
-            state: GpuState::OamSearch,
-            x: 0,
-            y: 0,
-            fifo: Vec::new(),
-            sprites: Vec::new(),
-            pixel_transfer_state: PixelTransferState::GetTile,
-            is_pixel_transfer_first_call: true,
-            dump_slice: true,
-            number_of_slices_pushed: 0,
-            virtual_x: 0,
+    fn switch_when_ticks(&mut self, ticks: u16, new_state: GpuState) {
+        if self.ticks >= ticks {
+            self.state = new_state;
+            self.ticks = 0;
+        } else {
+            self.ticks += 1;
         }
+    }
+
+    pub(crate) fn tick(&mut self, layers: &mut Layers, bus: &mut Bus) {
+        match self.state {
+            GpuState::OamSearch => self.oam_search(bus),
+            GpuState::PixelTransfer => self.pixel_transfer(layers, bus),
+            GpuState::HBlank => self.hblank(layers, bus),
+            GpuState::VBlank => self.vblank(layers, bus),
+        }
+
+        bus.write(LY, self.y);
     }
 }
 
@@ -85,6 +66,25 @@ pub struct Gpu {
 
     /// `number_of_slices_pushed` * 8
     virtual_x: u8,
+}
+
+impl Gpu {
+    pub(crate) fn new() -> Self {
+        Self {
+            screen: [[Color::Light; DISPLAY_SIZE_X]; DISPLAY_SIZE_Y],
+            ticks: 0,
+            state: GpuState::OamSearch,
+            x: 0,
+            y: 0,
+            fifo: Vec::new(),
+            sprites: Vec::new(),
+            pixel_transfer_state: PixelTransferState::GetTile,
+            is_pixel_transfer_first_call: true,
+            dump_slice: true,
+            number_of_slices_pushed: 0,
+            virtual_x: 0,
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

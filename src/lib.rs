@@ -6,7 +6,7 @@ use cpu::Cpu;
 use flags::Flags;
 use gpu::{
     pixel_transfer::{
-        background::BackgroundLayer, sprite::SpriteLayer, window::WindowLayer, Layer,
+        background::BackgroundLayer, sprite::SpriteLayer, window::WindowLayer, Layers,
     },
     Gpu, GpuState,
 };
@@ -30,9 +30,8 @@ pub struct GameBoy {
     pub joypad: Joypad,
     pub registers: Registers,
 
-    /// The GameBoy's screen has three layers, this array houses those layers, they are
-    /// decoupled from the other parts of the emulator
-    layers: [Box<dyn Layer>; 3],
+    /// The layers are completely decoupled from the other parts of the emulator
+    layers: Layers,
 }
 
 impl GameBoy {
@@ -99,7 +98,7 @@ impl GameBoy {
             // cycle. TODO: This is not actually all that accurate to the actual GameBoy
             // but to change this I will have to redesign the CPU to count cycles
             // procedurally and call `Gpu.tick()` for every cycle from there
-            self.tick();
+            self.gpu.tick(&mut self.layers, &mut self.bus);
         }
 
         // JOYPAD

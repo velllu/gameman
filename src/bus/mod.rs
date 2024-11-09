@@ -183,8 +183,8 @@ pub(crate) fn new_mbc(rom: Vec<u8>) -> Box<dyn Mbc> {
 
     match mbc_type {
         0x00 => Box::new(NoMbc::new(rom)),
-        0x01 | 0x02 | 0x03 => Box::new(Mbc1::new(rom)),
-        0x0F | 0x10 | 0x11 | 0x12 | 0x13 => Box::new(Mbc3::new(rom)),
+        0x01..=0x03 => Box::new(Mbc1::new(rom)),
+        0x0F..=0x13 => Box::new(Mbc3::new(rom)),
 
         _ => Box::new(NoMbc::new(rom)),
     }
@@ -250,7 +250,7 @@ pub(super) fn calculate_ram_address(ram_size: usize, address: u16, bank: usize) 
 }
 
 /// Fetches the rom rize using the rom header data
-pub(super) fn get_rom_size(rom: &Vec<u8>) -> usize {
+pub(super) fn get_rom_size(rom: &[u8]) -> usize {
     let rom_size_byte = *rom.get(0x148).unwrap_or(&0) as usize;
 
     // This formula is from the pandocs
@@ -258,7 +258,7 @@ pub(super) fn get_rom_size(rom: &Vec<u8>) -> usize {
 }
 
 /// Fetches the ram rize using the rom header data
-pub(super) fn get_ram_size(rom: &Vec<u8>) -> usize {
+pub(super) fn get_ram_size(rom: &[u8]) -> usize {
     let ram_size_byte = *rom.get(0x149).unwrap_or(&0) as usize;
 
     // This formula is from the pandocs
@@ -267,6 +267,6 @@ pub(super) fn get_ram_size(rom: &Vec<u8>) -> usize {
         3 => EXTERNAL_RAM_BANK_SIZE * 4,
         4 => EXTERNAL_RAM_BANK_SIZE * 16,
         5 => EXTERNAL_RAM_BANK_SIZE * 8,
-        0 | 1 | _ => 0,
+        _ => 0,
     }
 }

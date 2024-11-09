@@ -76,7 +76,7 @@ impl Layer for SpriteLayer {
 
         // TODO: This is kinda ugly
         for sprite in &gpu.sprites {
-            let mut sprite_to_draw = sprite.clone();
+            let mut sprite_to_draw = *sprite;
 
             if sprite.y < 16 {
                 continue;
@@ -145,17 +145,17 @@ impl Layer for SpriteLayer {
         // on the screen TODO: This does not work whenever there's two sprite next to each
         // other that are both wrapping on the screen on the same line
         if !self.is_sprite_left_side {
-            tile_data = (tile_data << self.left_side_shift) as u16;
+            tile_data <<= self.left_side_shift;
         }
 
         // This is the offset to make sprite that are not on a 8x8 grid render correctly.
         // So for example if a sprite is on coordinate "17", we need to move it 1 pixel to
         // the right then how it already is
-        tile_data = (tile_data as u16).rotate_right(sprite_to_draw.x as u32 % 8);
+        tile_data = tile_data.rotate_right(sprite_to_draw.x as u32 % 8);
 
         match is_high_part {
-            false => self.tile_data_low = tile_data as u16,
-            true => self.tile_data_high = tile_data as u16,
+            false => self.tile_data_low = tile_data,
+            true => self.tile_data_high = tile_data,
         };
     }
 

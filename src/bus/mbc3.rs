@@ -83,7 +83,6 @@ impl Mbc for Mbc3 {
         // Address 4000-5FFF is the two bit ram bank number register
         if (0x4000..=0x5FFF).contains(&address) {
             self.ram_bank_number = value as usize & 0b00000011;
-            return;
         }
     }
 }

@@ -126,8 +126,6 @@ impl Mbc for Mbc1 {
                 false => BankingMode::Simple,
                 true => BankingMode::Advanced,
             };
-
-            return;
         }
     }
 }
